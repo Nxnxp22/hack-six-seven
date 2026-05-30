@@ -123,14 +123,16 @@ const PowerOverloadEasyPage: React.FC = () => {
         if (response.isGameOver) {
           sessionStorage.removeItem("active_game_session_id");
           sessionStorage.removeItem("active_game_difficulty");
+          const timeTaken = game.timeLimitSeconds - seconds;
           const coinsGained = 10 + Math.floor((seconds / game.timeLimitSeconds) * 30);
-          alert(response.message || `SUCCESSFULLY DEFUSED! Stability restored: +10% | Coins earned: +${coinsGained} 🪙`);
+          alert(`SUCCESSFULLY DEFUSED in ${timeTaken} seconds! Stability restored: +10% | Coins earned: +${coinsGained} 🪙`);
           navigate("/", { state: { stabilityGained: 10, coinsGained, status: "SUCCESS", feature: "powerOverload" } });
         }
       } else {
         sessionStorage.removeItem("active_game_session_id");
         sessionStorage.removeItem("active_game_difficulty");
-        alert(response.message || "CRITICAL OVERLOAD FAILURE! Stability lost: -10%");
+        const timeTaken = game.timeLimitSeconds - seconds;
+        alert(`CRITICAL OVERLOAD FAILURE! Defusal failed after ${timeTaken} seconds. Stability lost: -10%`);
         navigate("/", { state: { stabilityLost: 10, status: "FAILED", feature: "powerOverload" } });
       }
     } catch (error) {

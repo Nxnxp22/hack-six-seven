@@ -192,10 +192,10 @@ const PowerOverloadMediumPage: React.FC = () => {
         if (response.isGameOver) {
           sessionStorage.removeItem("active_game_session_id");
           sessionStorage.removeItem("active_game_difficulty");
+          const timeTaken = game.timeLimitSeconds - seconds;
           const coinsGained = 10 + Math.floor((seconds / game.timeLimitSeconds) * 30);
           alert(
-            response.message ||
-              `SUCCESSFULLY DEFUSED! Stability restored: +15% | Coins earned: +${coinsGained} 🪙`,
+            `SUCCESSFULLY DEFUSED in ${timeTaken} seconds! Stability restored: +15% | Coins earned: +${coinsGained} 🪙`,
           );
           navigate("/", {
             state: {
@@ -209,8 +209,9 @@ const PowerOverloadMediumPage: React.FC = () => {
       } else {
         sessionStorage.removeItem("active_game_session_id");
         sessionStorage.removeItem("active_game_difficulty");
+        const timeTaken = game.timeLimitSeconds - seconds;
         alert(
-          response.message || "CRITICAL OVERLOAD FAILURE! Stability lost: -10%",
+          `CRITICAL OVERLOAD FAILURE! Defusal failed after ${timeTaken} seconds. Stability lost: -10%`,
         );
         navigate("/", {
           state: {
