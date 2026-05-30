@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  
 }
 
 model MorseChallenge {
@@ -14,23 +13,4 @@ model MorseChallenge {
   difficulty String   @default("easy")
   active     Boolean  @default(true)
   createdAt  DateTime @default(now())
-}
-
-model PlayerSession {
-  id         String   @id @default(uuid())
-  playerName String
-  stability  Int      @default(0)
-  startedAt  DateTime @default(now())
-  scores     Score[]
-}
-
-model Score {
-  id        String        @id @default(uuid())
-  sessionId String
-  session   PlayerSession @relation(fields: [sessionId], references: [id])
-  word      String
-  correct   Boolean
-  timeTaken Int
-  round     Int
-  createdAt DateTime      @default(now())
 }
