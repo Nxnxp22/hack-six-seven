@@ -131,15 +131,18 @@ export default function SecurityLockdownPage() {
     setWrongFeedback(null)
     startTimeRef.current = Date.now()
     try {
-      const [stateData, puzzleData] = await Promise.all([
-        service.fetchGameState(),
-        service.fetchRandomPuzzle(),
-      ])
+      const stateData = await service.fetchGameState()
       setGameState(stateData)
+      const puzzleData = await service.fetchRandomPuzzle()
       setPuzzle(puzzleData)
       startTimer(puzzleData.timeLimit)
-    } catch {
-      setPageError('Backend unreachable. Make sure the server is running on port 3000.')
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 404) {
+        setPageError('No puzzles in database. Run: npm run seed')
+      } else {
+        setPageError('Backend unreachable. Make sure the server is running on port 3000.')
+      }
     } finally {
       setLoading(false)
     }
