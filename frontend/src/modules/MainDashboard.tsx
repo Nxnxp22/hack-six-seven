@@ -132,12 +132,37 @@ const getStabilityColor = (pct: number) => {
 const averageStability = (mods: GameModule[]) =>
   Math.round(mods.reduce((sum, m) => sum + m.stability, 0) / mods.length);
 
+const MODULES_STORAGE_KEY = "nexus-dashboard-modules";
+
+const loadPersistedModules = (): GameModule[] => {
+  try {
+    const raw = sessionStorage.getItem(MODULES_STORAGE_KEY);
+    if (!raw) return INITIAL_MODULES.map((m) => ({ ...m }));
+    const saved = JSON.parse(raw) as Record<string, number>;
+    return INITIAL_MODULES.map((mod) => ({
+      ...mod,
+      stability:
+        typeof saved[mod.id] === "number"
+          ? Math.max(0, Math.min(100, saved[mod.id]))
+          : mod.stability,
+    }));
+  } catch {
+    return INITIAL_MODULES.map((m) => ({ ...m }));
+  }
+};
+
+const persistModules = (mods: GameModule[]) => {
+  const payload: Record<string, number> = {};
+  for (const m of mods) payload[m.id] = m.stability;
+  sessionStorage.setItem(MODULES_STORAGE_KEY, JSON.stringify(payload));
+};
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 const MainDashboard: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [modules, setModules] = useState<GameModule[]>(INITIAL_MODULES);
+  const [modules, setModules] = useState<GameModule[]>(loadPersistedModules);
   const [flashMsg, setFlashMsg] = useState<{ text: string; type: "success" | "fail" } | null>(null);
   const [scanlineY, setScanlineY] = useState(0);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -162,6 +187,11 @@ const MainDashboard: React.FC = () => {
     return () => timers.forEach(clearInterval);
   }, []);
 
+  // Remember stability while user is in other routes (game, etc.)
+  useEffect(() => {
+    persistModules(modules);
+  }, [modules]);
+
   const systemStability = averageStability(modules);
   const systemCritical = systemStability < 25;
 
@@ -176,15 +206,21 @@ const MainDashboard: React.FC = () => {
 
     if (!state) return;
 
-    if (state.stabilityGained) {
-      setModules(prev => prev.map(m =>
-        m.id === state.feature ? { ...m, stability: Math.min(100, m.stability + state.stabilityGained!) } : m
-      ));
+    if (state.stabilityGained && state.feature) {
+      setModules((prev) =>
+        prev.map((m) =>
+          m.id === state.feature ? { ...m, stability: 100 } : m
+        )
+      );
       setFlashMsg({ text: `✓ MAINTENANCE COMPLETE — STABILITY +${state.stabilityGained}%`, type: "success" });
-    } else if (state.stabilityLost) {
-      setModules(prev => prev.map(m =>
-        m.id === state.feature ? { ...m, stability: Math.max(0, m.stability - state.stabilityLost!) } : m
-      ));
+    } else if (state.stabilityLost && state.feature) {
+      setModules((prev) =>
+        prev.map((m) =>
+          m.id === state.feature
+            ? { ...m, stability: Math.max(0, m.stability - state.stabilityLost!) }
+            : m
+        )
+      );
       setFlashMsg({ text: `✗ CRITICAL FAILURE — STABILITY −${state.stabilityLost}%`, type: "fail" });
     }
 
