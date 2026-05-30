@@ -7,18 +7,18 @@ datasource db {
   provider = "sqlite"
 }
 
+// ─── Security Lockdown (Module 04) ──────────────────────────────────────────
+
 model GameState {
   id                     String   @id @default(cuid())
   coins                  Int      @default(100)
-  securityStability      Int      @default(100) // owned by Module 04
-  powerStability         Int      @default(100) // owned by Module 01
-  reactorStability       Int      @default(100) // owned by Module 02
-  communicationStability Int      @default(100) // owned by Module 03
+  securityStability      Int      @default(100)
+  powerStability         Int      @default(100)
+  reactorStability       Int      @default(100)
+  communicationStability Int      @default(100)
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 }
-
-// ─── Puzzle 4 (Password Puzzle) : Security Lockdown ────────────────────────────────────────────
 
 enum Difficulty {
   EASY
@@ -32,7 +32,7 @@ model PasswordPuzzle {
   difficulty Difficulty
   clueText   String
   answer     String
-  timeLimit  Int             @default(90) // seconds: EASY=120, MEDIUM=90, HARD=60
+  timeLimit  Int             @default(90)
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt
   hints      PuzzleHint[]
@@ -60,4 +60,41 @@ model PuzzleAttempt {
   coinsChange     Int
   stabilityChange Int
   createdAt       DateTime       @default(now())
+}
+
+// ─── Power Overload (Module 01) ──────────────────────────────────────────────
+
+model DecodingRule {
+  id          Int    @id @default(autoincrement())
+  difficulty  String
+  rule_number Int
+  description String
+
+  @@map("decoding_rules")
+}
+
+model CriticalTemplate {
+  id         Int    @id @default(autoincrement())
+  difficulty String @unique
+  template   String
+
+  @@map("critical_templates")
+}
+
+// ─── Stability / Shared ──────────────────────────────────────────────────────
+
+model ModuleStability {
+  id             Int      @id @default(autoincrement())
+  moduleId       String   @unique
+  startedAt      DateTime @default(now())
+  bonusStability Int      @default(0)
+
+  @@map("module_stability")
+}
+
+model GameCoins {
+  id      Int @id @default(autoincrement())
+  balance Int @default(100)
+
+  @@map("game_coins")
 }
