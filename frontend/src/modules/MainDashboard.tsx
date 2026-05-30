@@ -517,7 +517,7 @@ const MainDashboard: React.FC = () => {
                 </div>
 
                 {/* Description */}
-                <p className="text-zinc-500 text-[11px] leading-relaxed mb-4 font-sans">
+                <p className="text-zinc-500 text-[11px] leading-relaxed mb-4 font-mono">
                   {mod.description}
                 </p>
 
