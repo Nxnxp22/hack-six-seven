@@ -8,15 +8,17 @@ datasource db {
 }
 
 model GameState {
-  id                String   @id @default(cuid())
-  coins             Int      @default(100)
-  securityStability Int      @default(100)
-  // powerStability, reactorStability, communicationStability
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                     String   @id @default(cuid())
+  coins                  Int      @default(100)
+  securityStability      Int      @default(100) // owned by Module 04
+  powerStability         Int      @default(100) // owned by Module 01
+  reactorStability       Int      @default(100) // owned by Module 02
+  communicationStability Int      @default(100) // owned by Module 03
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 }
 
-// ─── Puzzle 4: Security Lockdown ────────────────────────────────────────────
+// ─── Puzzle 4 (Password Puzzle) : Security Lockdown ────────────────────────────────────────────
 
 enum Difficulty {
   EASY
@@ -30,6 +32,7 @@ model PasswordPuzzle {
   difficulty Difficulty
   clueText   String
   answer     String
+  timeLimit  Int             @default(90) // seconds: EASY=120, MEDIUM=90, HARD=60
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt
   hints      PuzzleHint[]
