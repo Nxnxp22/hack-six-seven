@@ -153,8 +153,15 @@ const WelcomeDashboard: React.FC = () => {
         </div>
       </div>
 
-      <footer className="mt-8 text-center text-zinc-600 text-[10px] font-mono tracking-widest z-10">
-        NEXUS CORE OS v4.3.0 // HACK-SIXSEVEN PROJECT
+      <footer className="mt-8 text-center text-zinc-600 text-[10px] font-mono tracking-widest z-10 flex items-center gap-4 justify-center">
+        <span>NEXUS CORE OS v4.3.0 // HACK-SIXSEVEN PROJECT</span>
+        <span className="text-zinc-800">·</span>
+        <a
+          href="#/admin"
+          className="text-zinc-700 hover:text-yellow-500 transition-colors uppercase tracking-widest"
+        >
+          ADMIN PANEL
+        </a>
       </footer>
     </div>
   );

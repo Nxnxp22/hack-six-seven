@@ -136,24 +136,13 @@ const PowerOverloadHardPage: React.FC = () => {
             BACK
           </button>
 
-          {/* Dynamic header depending on manual open state */}
-          {!isManualOpen ? (
-            <div className="text-yellow-500 font-extrabold text-xs tracking-[0.25em] uppercase flex items-center gap-2">
-              <svg className="w-3.5 h-3.5 fill-current text-yellow-500 animate-pulse" viewBox="0 0 24 24">
-                <path d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              POWER OVERLOAD [HARD]
-            </div>
-          ) : (
-            <div className="text-yellow-500 font-extrabold text-xs tracking-[0.25em] uppercase flex items-center gap-2">
-              <svg className="w-4 h-4 fill-none stroke-current text-yellow-500" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.5a6.5 6.5 0 110-13 6.5 6.5 0 010 13z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15.25a3.25 3.25 0 110-6.5 3.25 3.25 0 010 6.5z" />
-                <circle cx="12" cy="12" r="0.75" fill="currentColor" />
-              </svg>
-              COMM FAILURE
-            </div>
-          )}
+          {/* Logo always shows normal header */}
+          <div className="text-yellow-500 font-extrabold text-xs tracking-[0.25em] uppercase flex items-center gap-2">
+            <svg className="w-3.5 h-3.5 fill-current text-yellow-500 animate-pulse" viewBox="0 0 24 24">
+              <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            POWER OVERLOAD [HARD]
+          </div>
 
           {/* Dynamic manual button style depending on active state */}
           <button
