@@ -6,6 +6,7 @@ import ClassifiedDocument from '../components/ClassifiedDocument'
 import PasswordInput from '../components/PasswordInput'
 import ManualPanel from '../components/ManualPanel'
 import MissionResultPopup from '../components/MissionResultPopup'
+import GameNavbar, { GameNavbarStat } from '../../../components/GameNavbar'
 
 const MAX_TRIES = 4
 const SESSION_KEY = 'sl_active_session'
@@ -269,6 +270,14 @@ export default function SecurityLockdownPage() {
 
   const hintsRevealed = Object.keys(revealedHints).length
   const totalHints    = puzzle?.hints.length ?? 0
+  const nextHint      = puzzle?.hints.find(h => !revealedHints[h.id]) ?? null
+
+  const lockIcon = (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <rect x="3" y="11" width="18" height="11" rx="1" strokeWidth="2"/>
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" strokeWidth="2"/>
+    </svg>
+  )
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
@@ -284,47 +293,26 @@ export default function SecurityLockdownPage() {
       )}
 
       {/* ── Nav ─────────────────────────────────────────────────────── */}
-      <header className="px-3 md:px-6 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0 border-b border-white/10">
-        <div className="flex items-center gap-3 md:gap-5">
-          <button onClick={() => navigate('/')} className="flex items-center gap-1.5 text-white/50 hover:text-white text-xs font-mono transition-colors">
-            <span>←</span> <span className="hidden xs:inline">BACK</span>
-          </button>
-          <div className="flex items-center gap-1.5 text-purple-400 text-xs font-mono">
-            <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <rect x="3" y="11" width="18" height="11" rx="1" strokeWidth="2"/>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" strokeWidth="2"/>
-            </svg>
-            LOCKDOWN
-          </div>
-          <button
-            onClick={() => setShowManual((v) => !v)}
-            className={`flex items-center gap-1.5 text-xs font-mono transition-colors px-2 py-0.5 border
-              ${showManual ? 'border-purple-500/60 text-purple-400' : 'border-transparent text-white/50 hover:text-white'}`}
-          >
-            <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-            </svg>
-            MANUAL
-          </button>
-        </div>
-
-        <div className="flex items-center gap-4 md:gap-6">
-          <div>
-            <p className="text-white/40 text-xs font-mono">TRIES</p>
-            <p className="text-white font-bold font-mono text-sm">{triesLeft}/{MAX_TRIES}</p>
-          </div>
-          <div>
-            <p className="text-white/40 text-xs font-mono">TIME</p>
-            <p className={`font-bold font-mono text-sm ${timerColor} ${timerUrgent ? 'animate-pulse' : ''}`}>
-              {puzzle ? formatTime(timeRemaining) : '--:--'}
-            </p>
-          </div>
-          <div>
-            <p className="text-white/40 text-xs font-mono">COINS</p>
-            <p className="text-amber-400 font-bold font-mono text-sm">{gameState?.coins ?? '—'}</p>
-          </div>
-        </div>
-      </header>
+      <GameNavbar
+        title="LOCKDOWN"
+        accentColor="purple"
+        icon={lockIcon}
+        manualActive={showManual}
+        onManualToggle={() => setShowManual((v) => !v)}
+        hint={nextHint && !result ? {
+          cost: nextHint.coinCost,
+          onClick: () => { void handleRevealHint(nextHint.id, nextHint.coinCost) },
+          disabled: (gameState?.coins ?? 0) < nextHint.coinCost,
+        } : undefined}
+      >
+        <GameNavbarStat label="TRIES" value={`${triesLeft}/${MAX_TRIES}`} />
+        <GameNavbarStat
+          label="TIME"
+          value={puzzle ? formatTime(timeRemaining) : '--:--'}
+          valueClass={`${timerColor}${timerUrgent ? ' animate-pulse' : ''}`}
+        />
+        <GameNavbarStat label="COINS" value={gameState?.coins ?? '—'} valueClass="text-amber-400" />
+      </GameNavbar>
 
       {/* ── Stability bars ──────────────────────────────────────────── */}
       <div className="px-3 md:px-6 py-2 border-b border-white/10 shrink-0">
@@ -334,10 +322,15 @@ export default function SecurityLockdownPage() {
         </div>
       </div>
 
-      {/* ── Error ───────────────────────────────────────────────────── */}
+      {/* ── Errors ──────────────────────────────────────────────────── */}
       {pageError && (
         <div className="px-3 md:px-6 py-2 bg-red-500/10 border-b border-red-500/20 shrink-0">
           <p className="text-red-400 text-xs font-mono max-w-2xl mx-auto">{pageError}</p>
+        </div>
+      )}
+      {hintError && (
+        <div className="px-3 md:px-6 py-2 bg-amber-500/10 border-b border-amber-500/20 shrink-0">
+          <p className="text-amber-400 text-xs font-mono max-w-2xl mx-auto">{hintError}</p>
         </div>
       )}
 
@@ -364,9 +357,6 @@ export default function SecurityLockdownPage() {
                 puzzle={puzzle}
                 loading={loading}
                 revealedHints={revealedHints}
-                currentCoins={gameState?.coins ?? 0}
-                hintError={hintError}
-                onRevealHint={handleRevealHint}
               />
             </div>
 
