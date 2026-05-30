@@ -1,9 +1,9 @@
-import { createHashRouter } from 'react-router-dom';
-import PowerOverloadPage from './modules/powerOverload/PowerOverloadPage';
+import { createHashRouter } from "react-router-dom";
+import PowerOverloadPage from "./modules/powerOverload/PowerOverloadPage";
 
 export const router = createHashRouter([
   {
-    path: '/',
+    path: "/",
     element: <PowerOverloadPage />,
   },
 ]);

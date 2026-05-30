@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Terminal, Shield, Zap, Activity } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Terminal, Shield, Zap, Activity } from "lucide-react";
 
 const WelcomeDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -9,11 +9,11 @@ const WelcomeDashboard: React.FC = () => {
 
   useEffect(() => {
     const messages = [
-      'SYSINIT: LOADING CRITICAL POWER MATRIX...',
-      'WARNING: DETECTED VOLTAGE FLUCTUATION IN NEXUS-C...',
-      'COMM FAILURE IMMINENT. ENTERING SECURITY OVERRIDE MODE...',
-      'GRID STABILITY: 14% AND DECREASING.',
-      'MANUAL OVERRIDE: READY. STAND BY FOR HACKING PROTOCOL...',
+      "SYSINIT: LOADING CRITICAL POWER MATRIX...",
+      "WARNING: DETECTED VOLTAGE FLUCTUATION IN NEXUS-C...",
+      "COMM FAILURE IMMINENT. ENTERING SECURITY OVERRIDE MODE...",
+      "GRID STABILITY: 14% AND DECREASING.",
+      "MANUAL OVERRIDE: READY. STAND BY FOR HACKING PROTOCOL...",
     ];
 
     let currentIdx = 0;
@@ -30,7 +30,7 @@ const WelcomeDashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const handleStartHacking = (difficulty: 'EASY' | 'MEDIUM' | 'HARD') => {
+  const handleStartHacking = (difficulty: "EASY" | "MEDIUM" | "HARD") => {
     navigate(`/game?difficulty=${difficulty}`);
   };
 
@@ -51,7 +51,7 @@ const WelcomeDashboard: React.FC = () => {
       <div className="max-w-4xl w-full flex flex-col md:flex-row gap-8 items-stretch z-10 p-6 md:p-10 border border-zinc-900 bg-zinc-950/60 backdrop-blur-md rounded-2xl shadow-2xl relative">
         {/* Glow decoration */}
         <div className="absolute -inset-0.5 bg-gradient-to-r from-yellow-500/20 to-red-500/10 rounded-2xl blur opacity-30 pointer-events-none"></div>
-        
+
         {/* Left column: Tactical Briefing */}
         <div className="flex-1 flex flex-col justify-between border-b md:border-b-0 md:border-r border-zinc-900 pb-6 md:pb-0 md:pr-8">
           <div>
@@ -61,11 +61,16 @@ const WelcomeDashboard: React.FC = () => {
                 Power Overload
               </h1>
             </div>
-            
+
             <p className="text-zinc-400 text-xs leading-relaxed font-sans mb-6">
-              Critical grid malfunction detected in the reactor core. Core coolant pressure is failing. 
-              The system requires manual sequence decryptions by cutting the correct sequence of power wires. 
-              Review the <span className="text-yellow-500 font-bold">NEXUS HACKING MANUAL</span> inline during operations to avoid an immediate explosive reaction.
+              Critical grid malfunction detected in the reactor core. Core
+              coolant pressure is failing. The system requires manual sequence
+              decryptions by cutting the correct sequence of power wires. Review
+              the{" "}
+              <span className="text-yellow-500 font-bold">
+                NEXUS HACKING MANUAL
+              </span>{" "}
+              inline during operations to avoid an immediate explosive reaction.
             </p>
           </div>
 
@@ -77,13 +82,18 @@ const WelcomeDashboard: React.FC = () => {
             {logs.map((log, index) => {
               if (!log) return null;
               return (
-                <p key={index} className={`truncate ${log.includes('WARNING') ? 'text-red-400' : 'text-zinc-400'}`}>
+                <p
+                  key={index}
+                  className={`truncate ${log.includes("WARNING") ? "text-red-400" : "text-zinc-400"}`}
+                >
                   &gt; {log}
                 </p>
               );
             })}
             {systemOnline && (
-              <p className="text-emerald-400 font-bold animate-pulse">&gt; GRID OVERRIDE CONSOLE READY.</p>
+              <p className="text-emerald-400 font-bold animate-pulse">
+                &gt; GRID OVERRIDE CONSOLE READY.
+              </p>
             )}
           </div>
         </div>
@@ -98,7 +108,7 @@ const WelcomeDashboard: React.FC = () => {
           <div className="space-y-4">
             {/* Easy level */}
             <button
-              onClick={() => handleStartHacking('EASY')}
+              onClick={() => handleStartHacking("EASY")}
               className="w-full text-left group border border-zinc-900 hover:border-yellow-500/50 bg-zinc-950 hover:bg-yellow-500/[0.02] p-4 rounded-xl transition-all duration-300 relative overflow-hidden"
             >
               <div className="flex justify-between items-start mb-1.5">
@@ -110,13 +120,14 @@ const WelcomeDashboard: React.FC = () => {
                 </span>
               </div>
               <p className="text-[11px] text-zinc-500 group-hover:text-zinc-400 transition-colors">
-                Simple grid configuration. Perfect for validating hacking console connectivity.
+                Simple grid configuration. Perfect for validating hacking
+                console connectivity.
               </p>
             </button>
 
             {/* Medium level */}
             <button
-              onClick={() => handleStartHacking('MEDIUM')}
+              onClick={() => handleStartHacking("MEDIUM")}
               className="w-full text-left group border border-zinc-900 hover:border-orange-500/50 bg-zinc-950 hover:bg-orange-500/[0.02] p-4 rounded-xl transition-all duration-300 relative overflow-hidden"
             >
               <div className="flex justify-between items-start mb-1.5">
@@ -128,13 +139,14 @@ const WelcomeDashboard: React.FC = () => {
                 </span>
               </div>
               <p className="text-[11px] text-zinc-500 group-hover:text-zinc-400 transition-colors">
-                Intermediate sequencing. Requires careful verification of conflicting conditions.
+                Intermediate sequencing. Requires careful verification of
+                conflicting conditions.
               </p>
             </button>
 
             {/* Hard level */}
             <button
-              onClick={() => handleStartHacking('HARD')}
+              onClick={() => handleStartHacking("HARD")}
               className="w-full text-left group border border-zinc-900 hover:border-red-500/50 bg-zinc-950 hover:bg-red-500/[0.02] p-4 rounded-xl transition-all duration-300 relative overflow-hidden"
             >
               <div className="flex justify-between items-start mb-1.5">
@@ -146,22 +158,16 @@ const WelcomeDashboard: React.FC = () => {
                 </span>
               </div>
               <p className="text-[11px] text-zinc-500 group-hover:text-zinc-400 transition-colors">
-                Highly unstable system. Complex overlapping multi-wire severance sequence required.
+                Highly unstable system. Complex overlapping multi-wire severance
+                sequence required.
               </p>
             </button>
           </div>
         </div>
       </div>
 
-      <footer className="mt-8 text-center text-zinc-600 text-[10px] font-mono tracking-widest z-10 flex items-center gap-4 justify-center">
-        <span>NEXUS CORE OS v4.3.0 // HACK-SIXSEVEN PROJECT</span>
-        <span className="text-zinc-800">·</span>
-        <a
-          href="#/admin"
-          className="text-zinc-700 hover:text-yellow-500 transition-colors uppercase tracking-widest"
-        >
-          ADMIN PANEL
-        </a>
+      <footer className="mt-8 text-center text-zinc-600 text-[10px] font-mono tracking-widest z-10">
+        NEXUS CORE OS v4.3.0 // HACK-SIXSEVEN PROJECT
       </footer>
     </div>
   );
