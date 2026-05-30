@@ -1,0 +1,317 @@
+import { Request, Response } from 'express';
+import { getRulesFromDB, getCriticalTemplateFromDB } from '../db.js';
+
+interface Wire {
+  id: string;
+  color: string;
+  label: string;
+  isCut: boolean;
+}
+
+interface GameSession {
+  sessionId: string;
+  serialNumber: string;
+  difficulty: 'EASY' | 'MEDIUM' | 'HARD';
+  wires: Wire[];
+  correctSequence: number[];
+  cutHistory: number[];
+  totalCutsNeeded: number;
+  timeLimitSeconds: number;
+}
+
+// In-memory active game sessions cache
+const sessions = new Map<string, GameSession>();
+
+// Solve function matching rulebook logic
+const solveGrid = (wireList: Wire[], diff: string): number[] => {
+  if (diff === 'EASY') {
+    const hasRed = wireList.some(w => w.color === 'RED');
+    if (hasRed) {
+      return [wireList.findIndex(w => w.color === 'RED')];
+    }
+    if (wireList[wireList.length - 1].color === 'BLUE') {
+      return [wireList.length - 1];
+    }
+    return [0]; // default green
+  } 
+  
+  if (diff === 'MEDIUM') {
+    let t1 = -1;
+    const hasYellow = wireList.some(w => w.color === 'YELLOW');
+    if (hasYellow) {
+      t1 = wireList.findIndex(w => w.color === 'YELLOW');
+    } else {
+      t1 = 2; // 3rd (middle) wire
+    }
+
+    let t2 = -1;
+    if (wireList[wireList.length - 1].color === 'GREEN') {
+      t2 = wireList.length - 1;
+    } else {
+      t2 = 0; // 1st wire
+    }
+
+    if (t1 === t2) {
+      t2 = wireList.length - 1; // Cut last wire instead
+    }
+
+    return [t1, t2];
+  }
+
+  // HARD (5 wires)
+  const cuts = new Set<number>();
+  
+  let w1 = wireList.some(w => w.color === 'GREEN') 
+    ? wireList.findIndex(w => w.color === 'GREEN') 
+    : 0;
+  cuts.add(w1);
+
+  let w2 = wireList.some(w => w.color === 'CYAN')
+    ? wireList.findIndex(w => w.color === 'CYAN')
+    : 3;
+  
+  while (cuts.has(w2)) {
+    w2 = (w2 + 1) % 5;
+  }
+  cuts.add(w2);
+
+  const lastColor = wireList[wireList.length - 1].color;
+  let w3 = (lastColor === 'ORANGE' || lastColor === 'PURPLE')
+    ? wireList.length - 1
+    : 1;
+
+  while (cuts.has(w3)) {
+    w3 = (w3 + 1) % 5;
+  }
+  cuts.add(w3);
+
+  return [w1, w2, w3];
+};
+
+/**
+ * Starts a new game session and calculates correct sequence.
+ */
+export const getNewGame = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { difficulty } = req.body;
+    const diff = (difficulty || 'EASY').toUpperCase() as 'EASY' | 'MEDIUM' | 'HARD';
+
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const randLetter = () => letters[Math.floor(Math.random() * letters.length)];
+    const randDigit = () => Math.floor(Math.random() * 10);
+    const serial = `PKY-${randDigit()}${randDigit()}${randDigit()}${randLetter()}`;
+
+    let generatedWires: Wire[] = [];
+    let neededCuts = 1;
+    let timeLimit = 73;
+
+    if (diff === 'EASY') {
+      generatedWires = [
+        { id: 'w1', color: 'GREEN', label: 'GREEN', isCut: false },
+        { id: 'w2', color: 'YELLOW', label: 'YELLOW', isCut: false },
+        { id: 'w3', color: 'CYAN', label: 'CYAN', isCut: false }
+      ];
+      neededCuts = 1;
+      timeLimit = 73;
+    } else if (diff === 'MEDIUM') {
+      generatedWires = [
+        { id: 'w1', color: 'GREEN', label: 'GREEN', isCut: false },
+        { id: 'w2', color: 'YELLOW', label: 'YELLOW', isCut: false },
+        { id: 'w3', color: 'CYAN', label: 'CYAN', isCut: false },
+        { id: 'w4', color: 'RED', label: 'RED', isCut: false },
+        { id: 'w5', color: 'PURPLE', label: 'PURPLE', isCut: false }
+      ];
+      neededCuts = 2;
+      timeLimit = 120;
+    } else {
+      generatedWires = [
+        { id: 'w1', color: 'GREEN', label: 'GREEN', isCut: false },
+        { id: 'w2', color: 'YELLOW', label: 'YELLOW', isCut: false },
+        { id: 'w3', color: 'CYAN', label: 'CYAN', isCut: false },
+        { id: 'w4', color: 'RED', label: 'RED', isCut: false },
+        { id: 'w5', color: 'PURPLE', label: 'PURPLE', isCut: false }
+      ];
+      neededCuts = 3;
+      timeLimit = 180;
+    }
+
+    const sessionId = `sess_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    let correctSequence: number[] = [];
+
+    if (diff === 'EASY') {
+      correctSequence = [Math.floor(Math.random() * 3)];
+    } else if (diff === 'MEDIUM') {
+      const indices = [0, 1, 2, 3, 4];
+      const shuffled = indices.sort(() => Math.random() - 0.5);
+      correctSequence = [shuffled[0], shuffled[1]];
+    } else {
+      const indices = [0, 1, 2, 3, 4];
+      const shuffled = indices.sort(() => Math.random() - 0.5);
+      correctSequence = [shuffled[0], shuffled[1], shuffled[2]];
+    }
+
+    const session: GameSession = {
+      sessionId,
+      serialNumber: serial,
+      difficulty: diff,
+      wires: generatedWires,
+      correctSequence,
+      cutHistory: [],
+      totalCutsNeeded: neededCuts,
+      timeLimitSeconds: timeLimit,
+    };
+
+    sessions.set(sessionId, session);
+
+    // Helpers for dynamic hints
+    const getSystemName = (color: string): string => {
+      switch (color) {
+        case 'RED': return 'DANGER-CORE';
+        case 'BLUE': return 'HYDRO-GRID';
+        case 'GREEN': return 'BIO-SYNAPSE';
+        case 'YELLOW': return 'SOLAR-VOLT';
+        case 'CYAN': return 'CRYO-LINK';
+        case 'ORANGE': return 'THERMO-CELL';
+        case 'PURPLE': return 'VOID-NODE';
+        default: return 'SYSTEM-NODE';
+      }
+    };
+
+    const getHexColor = (color: string): string => {
+      switch (color) {
+        case 'RED': return '#E11D48';
+        case 'BLUE': return '#2563EB';
+        case 'GREEN': return '#00C838';
+        case 'YELLOW': return '#FFBC00';
+        case 'CYAN': return '#00B4DB';
+        case 'ORANGE': return '#F97316';
+        case 'PURPLE': return '#9333EA';
+        default: return '#FFFFFF';
+      }
+    };
+
+    // Fetch and compute instruction with dynamic hard hints from the database
+    let instruction = '';
+    let template = '';
+    try {
+      template = await getCriticalTemplateFromDB(diff);
+    } catch (dbErr) {
+      console.error('Error fetching critical template from database, using fallback:', dbErr);
+    }
+
+    if (!template) {
+      if (diff === 'EASY') {
+        template = 'CRITICAL: Cut the {color} wire to restore power.';
+      } else if (diff === 'MEDIUM') {
+        template = 'CRITICAL: System breach. Override sequence hex signatures: {hex1} -> {hex2}.';
+      } else {
+        template = 'CRITICAL: Nexus lock active. Mainframe defusal signatures sequence: {name1} -> {name2} -> {name3}.';
+      }
+    }
+
+    if (diff === 'EASY') {
+      const color = generatedWires[correctSequence[0]]?.color || 'GREEN';
+      instruction = template.replace('{color}', color);
+    } else if (diff === 'MEDIUM') {
+      const hex1 = getHexColor(generatedWires[correctSequence[0]]?.color);
+      const hex2 = getHexColor(generatedWires[correctSequence[1]]?.color);
+      instruction = template.replace('{hex1}', hex1).replace('{hex2}', hex2);
+    } else {
+      const name1 = getSystemName(generatedWires[correctSequence[0]]?.color);
+      const name2 = getSystemName(generatedWires[correctSequence[1]]?.color);
+      const name3 = getSystemName(generatedWires[correctSequence[2]]?.color);
+      instruction = template.replace('{name1}', name1).replace('{name2}', name2).replace('{name3}', name3);
+    }
+
+    res.status(200).json({
+      sessionId,
+      serialNumber: serial,
+      difficulty: diff,
+      instruction,
+      totalCutsNeeded: neededCuts,
+      currentCuts: 0,
+      timeLimitSeconds: timeLimit,
+      wires: generatedWires
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Checks a cut wire request.
+ */
+export const checkWire = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { sessionId, wireId } = req.body;
+    
+    if (!sessionId || !wireId) {
+      res.status(400).json({ success: false, message: 'Missing sessionId or wireId.' });
+      return;
+    }
+
+    const session = sessions.get(sessionId);
+    if (!session) {
+      res.status(404).json({ success: false, message: 'Active game session not found.' });
+      return;
+    }
+
+    const wireIdx = session.wires.findIndex(w => w.id === wireId);
+    if (wireIdx === -1) {
+      res.status(404).json({ success: false, message: 'Wire not found in junction box.' });
+      return;
+    }
+
+    if (session.wires[wireIdx].isCut) {
+      res.status(400).json({ success: false, message: 'Wire has already been severed.' });
+      return;
+    }
+
+    // Cut the wire in session
+    session.wires[wireIdx].isCut = true;
+
+    // Check if correct cut in sequence
+    const currentStep = session.cutHistory.length;
+    const expectedIdx = session.correctSequence[currentStep];
+
+    if (wireIdx === expectedIdx) {
+      session.cutHistory.push(wireIdx);
+      const currentCuts = session.cutHistory.length;
+      const isGameOver = currentCuts === session.totalCutsNeeded;
+
+      if (isGameOver) {
+        sessions.delete(sessionId);
+      }
+
+      res.status(200).json({
+        success: true,
+        currentCuts,
+        isGameOver,
+        message: isGameOver ? 'SUCCESSFULLY DEFUSED!' : 'CORRECT SEVERANCE.'
+      });
+    } else {
+      sessions.delete(sessionId);
+      res.status(200).json({
+        success: false,
+        currentCuts: session.cutHistory.length,
+        isGameOver: true,
+        message: 'CRITICAL FAILURE: JUNCTION EXPLODED.'
+      });
+    }
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Fetches decoding rules from SQLite decoding_rules table.
+ */
+export const getManual = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const difficulty = (req.query.difficulty || 'EASY').toString().toUpperCase();
+    const rules = await getRulesFromDB(difficulty);
+    res.status(200).json(rules);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
