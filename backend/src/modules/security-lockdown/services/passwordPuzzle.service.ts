@@ -1,5 +1,12 @@
 import { prisma } from '../../../db'
 import { AppError } from '../../../shared/errors'
+import {
+  MAX_STABILITY,
+  MIN_STABILITY,
+  STABILITY_DELTA,
+  calcCoinsEarned,
+  hintCost,
+} from '../../../shared/gameBalance'
 import type {
   Difficulty,
   GameStateDTO,
@@ -8,13 +15,6 @@ import type {
   SubmitResponseDTO,
 } from '../types/passwordPuzzle.types'
 import type { CreatePuzzleBody, SubmitBody, UpdatePuzzleBody } from '../validators/passwordPuzzle.validator'
-
-// Game balance constants
-const COINS_ON_SUCCESS    = 20
-const STABILITY_ON_SUCCESS = 10
-const STABILITY_ON_FAILURE = -10
-const MAX_STABILITY        = 100
-const MIN_STABILITY        = 0
 
 // Time limits by difficulty (seconds)
 const TIME_LIMITS: Record<string, number> = {
@@ -79,7 +79,7 @@ export async function getRandomPuzzle(difficulty?: Difficulty): Promise<PuzzlePu
     skip,
     include: {
       hints: {
-        select: { id: true, order: true, coinCost: true },
+        select: { id: true, order: true },
         orderBy: { order: 'asc' },
       },
     },
@@ -93,7 +93,7 @@ export async function getRandomPuzzle(difficulty?: Difficulty): Promise<PuzzlePu
     difficulty: puzzle.difficulty as Difficulty,
     clueText:   puzzle.clueText,
     timeLimit:  puzzle.timeLimit,
-    hints:      puzzle.hints,
+    hints:      puzzle.hints.map(h => ({ id: h.id, order: h.order, coinCost: hintCost(h.order) })),
   }
 }
 
@@ -102,17 +102,18 @@ export async function revealHint(puzzleId: string, hintId: string): Promise<Reve
   const hint = await prisma.puzzleHint.findFirst({ where: { id: hintId, puzzleId } })
   if (!hint) throw new AppError('Hint not found', 404)
 
+  const cost = hintCost(hint.order)
   const gameState = await getOrCreateGameState()
-  if (gameState.coins < hint.coinCost) {
-    throw new AppError(`Insufficient coins — need ${hint.coinCost}, have ${gameState.coins}`, 400)
+  if (gameState.coins < cost) {
+    throw new AppError(`Insufficient coins — need ${cost}, have ${gameState.coins}`, 400)
   }
 
   const updated = await prisma.gameState.update({
     where: { id: gameState.id },
-    data: { coins: { decrement: hint.coinCost } },
+    data: { coins: { decrement: cost } },
   })
 
-  return { hintText: hint.hintText, coinCost: hint.coinCost, coinsRemaining: updated.coins }
+  return { hintText: hint.hintText, coinCost: cost, coinsRemaining: updated.coins }
 }
 
 // Validates answer, updates security stability + coins, records attempt
@@ -124,8 +125,10 @@ export async function submitAnswer(body: SubmitBody): Promise<SubmitResponseDTO>
     ? false
     : puzzle.answer.trim().toLowerCase() === body.answer.trim().toLowerCase()
 
-  const stabilityDelta = correct ? STABILITY_ON_SUCCESS : STABILITY_ON_FAILURE
-  const coinsDelta      = correct ? COINS_ON_SUCCESS     : 0
+  const { success: successDelta, failure: failureDelta } = STABILITY_DELTA[puzzle.difficulty]
+  const stabilityDelta = correct ? successDelta : failureDelta
+  const timeRemaining  = Math.max(0, puzzle.timeLimit - body.timeTaken)
+  const coinsDelta      = correct ? calcCoinsEarned(timeRemaining, puzzle.timeLimit) : 0
 
   const gameState = await getOrCreateGameState()
 
@@ -188,7 +191,7 @@ export async function getPuzzlePublic(id: string): Promise<PuzzlePublicDTO> {
     where: { id },
     include: {
       hints: {
-        select: { id: true, order: true, coinCost: true },
+        select: { id: true, order: true },
         orderBy: { order: 'asc' },
       },
     },
@@ -200,7 +203,7 @@ export async function getPuzzlePublic(id: string): Promise<PuzzlePublicDTO> {
     difficulty: puzzle.difficulty as Difficulty,
     clueText:   puzzle.clueText,
     timeLimit:  puzzle.timeLimit,
-    hints:      puzzle.hints,
+    hints:      puzzle.hints.map(h => ({ id: h.id, order: h.order, coinCost: hintCost(h.order) })),
   }
 }
 
