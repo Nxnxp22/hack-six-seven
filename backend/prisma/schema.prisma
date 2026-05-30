@@ -1,13 +1,60 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
+}
+
+model GameState {
+  id                String   @id @default(cuid())
+  coins             Int      @default(100)
+  securityStability Int      @default(100)
+  // powerStability, reactorStability, communicationStability
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+// ─── Puzzle 4: Security Lockdown ────────────────────────────────────────────
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+model PasswordPuzzle {
+  id         String          @id @default(cuid())
+  title      String
+  difficulty Difficulty
+  clueText   String
+  answer     String
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  hints      PuzzleHint[]
+  attempts   PuzzleAttempt[]
+}
+
+model PuzzleHint {
+  id        String         @id @default(cuid())
+  puzzleId  String
+  puzzle    PasswordPuzzle @relation(fields: [puzzleId], references: [id])
+  hintText  String
+  order     Int
+  coinCost  Int
+  createdAt DateTime       @default(now())
+}
+
+model PuzzleAttempt {
+  id              String         @id @default(cuid())
+  puzzleId        String
+  puzzle          PasswordPuzzle @relation(fields: [puzzleId], references: [id])
+  correct         Boolean
+  timeTaken       Int
+  hintsUsed       Int            @default(0)
+  coinsSpentHints Int            @default(0)
+  coinsChange     Int
+  stabilityChange Int
+  createdAt       DateTime       @default(now())
 }
