@@ -132,7 +132,7 @@ export const deleteRule = async (req: Request, res: Response): Promise<void> => 
       return;
     }
     await deleteRuleFromDB(id);
-    res.status(200).json({ success: true, id });
+    res.status(204).send();
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ error: message });

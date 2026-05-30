@@ -190,24 +190,15 @@ export const getNewGame = async (req: Request, res: Response): Promise<void> => 
       }
     };
 
-    // Fetch and compute instruction with dynamic hard hints from the database
-    let instruction = '';
-    let template = '';
-    try {
-      template = await getCriticalTemplateFromDB(diff);
-    } catch (dbErr) {
-      console.error('Error fetching critical template from database, using fallback:', dbErr);
+    const template = await getCriticalTemplateFromDB(diff);
+    if (!template) {
+      res.status(503).json({
+        error: `No critical template for ${diff}. Run: npm run db:seed`,
+      });
+      return;
     }
 
-    if (!template) {
-      if (diff === 'EASY') {
-        template = 'CRITICAL: Cut the {color} wire to restore power.';
-      } else if (diff === 'MEDIUM') {
-        template = 'CRITICAL: System breach. Override sequence hex signatures: {hex1} -> {hex2}.';
-      } else {
-        template = 'CRITICAL: Nexus lock active. Mainframe defusal signatures sequence: {name1} -> {name2} -> {name3}.';
-      }
-    }
+    let instruction = '';
 
     if (diff === 'EASY') {
       const color = generatedWires[correctSequence[0]]?.color || 'GREEN';
@@ -304,7 +295,7 @@ export const checkWire = async (req: Request, res: Response): Promise<void> => {
 };
 
 /**
- * Fetches decoding rules from SQLite decoding_rules table.
+ * Fetches decoding rules from the database.
  */
 export const getManual = async (req: Request, res: Response): Promise<void> => {
   try {

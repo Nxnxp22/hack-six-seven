@@ -24,6 +24,10 @@ prisma/dev.db
 prisma/dev.db-journal
 /src/generated/prisma
 
+# SQLite (use migrations + seed; keep local copy untracked)
+power_overload.db
+power_overload.db-journal
+
 # OS files
 .DS_Store
 Thumbs.db

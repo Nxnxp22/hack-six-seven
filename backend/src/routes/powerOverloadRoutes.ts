@@ -10,6 +10,7 @@ import {
 } from '../controllers/rulesController.js';
 import {
   listAllTemplates,
+  getTemplateByDifficulty,
   getTemplate,
   createTemplate,
   updateTemplate,
@@ -23,10 +24,7 @@ router.post('/start', getNewGame);
 router.post('/cut', checkWire);
 router.post('/cut-wire', checkWire);
 
-/**
- * @route   GET /api/game/manual?difficulty=EASY
- * @desc    Rules by difficulty (used by game UI)
- */
+/** GET /api/game/manual?difficulty=EASY — rules by difficulty (game UI) */
 router.get('/manual', getManual);
 
 // ─── decoding_rules CRUD ──────────────────────────────────────────────────────
@@ -38,6 +36,7 @@ router.put('/rules/:id', updateRule);
 router.delete('/rules/:id', deleteRule);
 
 // ─── critical_templates CRUD ──────────────────────────────────────────────────
+router.get('/templates/by-difficulty', getTemplateByDifficulty);
 router.get('/templates', listAllTemplates);
 router.get('/templates/:id', getTemplate);
 router.post('/templates', createTemplate);

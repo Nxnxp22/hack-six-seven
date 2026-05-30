@@ -5,6 +5,7 @@ import {
   createCriticalTemplateInDB,
   updateCriticalTemplateInDB,
   deleteCriticalTemplateFromDB,
+  getCriticalTemplateByDifficultyFromDB,
 } from '../db.js';
 
 const VALID_DIFFICULTIES = ['EASY', 'MEDIUM', 'HARD'] as const;
@@ -20,6 +21,26 @@ const parseTemplateBody = (body: Record<string, unknown>) => {
     return { error: 'template is required' };
   }
   return { difficulty, template };
+};
+
+/** GET /api/game/templates/by-difficulty?difficulty=EASY */
+export const getTemplateByDifficulty = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const difficulty = (req.query.difficulty || '').toString().toUpperCase();
+    if (!VALID_DIFFICULTIES.includes(difficulty as (typeof VALID_DIFFICULTIES)[number])) {
+      res.status(400).json({ error: 'difficulty must be EASY, MEDIUM, or HARD' });
+      return;
+    }
+    const row = await getCriticalTemplateByDifficultyFromDB(difficulty);
+    if (!row) {
+      res.status(404).json({ error: 'template not found' });
+      return;
+    }
+    res.status(200).json(row);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ error: message });
+  }
 };
 
 /** GET /api/game/templates */
@@ -111,7 +132,7 @@ export const deleteTemplate = async (req: Request, res: Response): Promise<void>
       return;
     }
     await deleteCriticalTemplateFromDB(id);
-    res.status(200).json({ success: true, id });
+    res.status(204).send();
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ error: message });

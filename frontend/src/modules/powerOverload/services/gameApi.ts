@@ -10,6 +10,14 @@ export interface DBManualRule {
   description: string;
 }
 
+export interface DBCriticalTemplate {
+  id: number;
+  difficulty: string;
+  template: string;
+}
+
+// ─── Game session ─────────────────────────────────────────────────────────────
+
 export const fetchNewGame = async (difficulty?: string): Promise<GameState> => {
   const response = await axios.post(`${API_URL}/game/start`, { difficulty });
   return response.data;
@@ -32,6 +40,13 @@ export const fetchAllRules = async (): Promise<DBManualRule[]> => {
   return response.data;
 };
 
+export const fetchRulesByDifficulty = async (difficulty: string): Promise<DBManualRule[]> => {
+  const response = await axios.get(`${API_URL}/game/rules/by-difficulty`, {
+    params: { difficulty },
+  });
+  return response.data;
+};
+
 export const fetchRuleById = async (id: number): Promise<DBManualRule> => {
   const response = await axios.get(`${API_URL}/game/rules/${id}`);
   return response.data;
@@ -48,27 +63,29 @@ export const createRule = async (body: {
 
 export const updateRule = async (
   id: number,
-  body: { difficulty: string; rule_number: number; description: string }
+  body: { difficulty: string; rule_number: number; description: string },
 ): Promise<DBManualRule> => {
   const response = await axios.put(`${API_URL}/game/rules/${id}`, body);
   return response.data;
 };
 
-export const deleteRule = async (id: number): Promise<{ success: boolean; id: number }> => {
-  const response = await axios.delete(`${API_URL}/game/rules/${id}`);
-  return response.data;
+export const deleteRule = async (id: number): Promise<void> => {
+  await axios.delete(`${API_URL}/game/rules/${id}`);
 };
 
-// ─── critical_templates CRUD ─────────────────────────────────────────────────
-
-export interface DBCriticalTemplate {
-  id: number;
-  difficulty: string;
-  template: string;
-}
+// ─── critical_templates CRUD ───────────────────────────────────────────────────
 
 export const fetchAllTemplates = async (): Promise<DBCriticalTemplate[]> => {
   const response = await axios.get(`${API_URL}/game/templates`);
+  return response.data;
+};
+
+export const fetchTemplateByDifficulty = async (
+  difficulty: string,
+): Promise<DBCriticalTemplate> => {
+  const response = await axios.get(`${API_URL}/game/templates/by-difficulty`, {
+    params: { difficulty },
+  });
   return response.data;
 };
 
@@ -87,13 +104,12 @@ export const createTemplate = async (body: {
 
 export const updateTemplate = async (
   id: number,
-  body: { difficulty: string; template: string }
+  body: { difficulty: string; template: string },
 ): Promise<DBCriticalTemplate> => {
   const response = await axios.put(`${API_URL}/game/templates/${id}`, body);
   return response.data;
 };
 
-export const deleteTemplate = async (id: number): Promise<{ success: boolean; id: number }> => {
-  const response = await axios.delete(`${API_URL}/game/templates/${id}`);
-  return response.data;
+export const deleteTemplate = async (id: number): Promise<void> => {
+  await axios.delete(`${API_URL}/game/templates/${id}`);
 };
