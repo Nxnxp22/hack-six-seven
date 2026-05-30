@@ -5,7 +5,8 @@
   "main": "src/index.ts",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts",
+    "db:clear": "tsx prisma/clear.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
