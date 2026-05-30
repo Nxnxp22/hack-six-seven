@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import type { GameState } from "./types";
-import { fetchNewGame, cutWire, fetchManualRules } from "./services/gameApi";
+import { fetchNewGame, cutWire, fetchManualRules, fetchHint } from "./services/gameApi";
 import type { DBManualRule } from "./services/gameApi";
+import { fetchCoins } from "./services/stabilityApi";
 
 const PowerOverloadMediumPage: React.FC = () => {
   const navigate = useNavigate();
   const [game, setGame] = useState<GameState | null>(null);
   const [seconds, setSeconds] = useState<number>(0);
+  const [coins, setCoins] = useState<number>(0);
+  const [hintCount, setHintCount] = useState<number>(0);
+  const [activeHint, setActiveHint] = useState<string | null>(null);
   const [isManualOpen, setIsManualOpen] = useState<boolean>(false);
   const [rules, setRules] = useState<DBManualRule[]>([]);
 
@@ -30,6 +34,10 @@ const PowerOverloadMediumPage: React.FC = () => {
       .catch((err) =>
         console.error("Error fetching Medium manual rules:", err),
       );
+
+    fetchCoins()
+      .then(({ balance }) => setCoins(balance))
+      .catch((err) => console.error("Error fetching coins balance:", err));
   }, []);
 
   useEffect(() => {
@@ -216,6 +224,34 @@ const PowerOverloadMediumPage: React.FC = () => {
     }
   };
 
+  const handleBuyHint = async () => {
+    if (!game) return;
+    const nextHintOrder = hintCount + 1;
+    const cost = nextHintOrder === 1 ? 15 : 20;
+
+    if (coins < cost) {
+      alert(`INSUFFICIENT COINS! Hint requires ${cost} coins, but you only have ${coins} coins.`);
+      return;
+    }
+
+    try {
+      const response = await fetchHint(game.sessionId, nextHintOrder);
+      if (response.success) {
+        setHintCount(nextHintOrder);
+        setCoins(response.balance);
+        setActiveHint(response.hintText);
+      } else {
+        alert(response.hintText || "Failed to purchase hint.");
+      }
+    } catch (error: any) {
+      if (error.response?.data?.message === "INSUFFICIENT_COINS") {
+        alert(`INSUFFICIENT COINS! Hint requires ${cost} coins.`);
+      } else {
+        console.error("Error purchasing hint:", error);
+      }
+    }
+  };
+
   if (!game)
     return (
       <div className="bg-black min-h-screen text-zinc-500 font-mono flex items-center justify-center">
@@ -296,10 +332,29 @@ const PowerOverloadMediumPage: React.FC = () => {
             )}
             MANUAL
           </button>
+          
+          {/* Hint Button */}
+          <button
+            onClick={handleBuyHint}
+            className={`flex items-center gap-2 border px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer text-yellow-500 border-yellow-800/80 hover:text-yellow-400 hover:border-yellow-500/70 hover:shadow-[0_0_12px_rgba(234,179,8,0.3)]`}
+          >
+            <svg className="w-3.5 h-3.5 fill-current text-yellow-500" viewBox="0 0 24 24">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 16h-2v-2h2v2zm0-4h-2V7h2v7z" />
+            </svg>
+            HINT ({hintCount === 0 ? 15 : 20} 🪙)
+          </button>
         </div>
 
         {/* Right Group: Stacked HUD Counters */}
         <div className="flex items-center gap-12 font-mono mr-4">
+          <div className="text-right">
+            <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest mb-0.5">
+              COINS
+            </p>
+            <p className="text-lg font-bold tracking-wide text-yellow-500 text-glow-yellow">
+              🪙 {coins}
+            </p>
+          </div>
           <div className="text-right">
             <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest mb-0.5">
               CUT
@@ -401,6 +456,20 @@ const PowerOverloadMediumPage: React.FC = () => {
             </span>
           </div>
         </div>
+
+        {/* ACTIVE HINT CARD */}
+        {activeHint && (
+          <div className="border border-yellow-500/50 bg-yellow-950/20 rounded-lg p-5 mb-12 flex items-center gap-4 max-w-2xl w-full mx-auto border-glow-yellow animate-fadeIn">
+            <div className="w-6 h-6 rounded border border-yellow-500 flex items-center justify-center text-yellow-500 font-black text-sm shrink-0 text-glow-yellow animate-pulse">
+              H
+            </div>
+            <div className="w-full text-center pr-6">
+              <span className="text-yellow-500 font-bold text-sm tracking-widest uppercase font-mono text-glow-yellow flex items-center justify-center flex-wrap">
+                {activeHint}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Junction Box Card */}
         <div className="border border-zinc-900 bg-zinc-950/40 rounded-xl p-8 max-w-lg w-full mx-auto shadow-2xl relative">
