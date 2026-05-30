@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import SimonButton from './components/SimonButton';
+import { calculateCoinsReward } from './apis/sharedRules';
 
 export type Color = 'red' | 'blue' | 'green' | 'yellow';
 export type Difficulty = 'easy' | 'medium';
@@ -19,18 +20,25 @@ export interface ScoreRecord {
 const COLORS: Color[] = ['red', 'blue', 'green', 'yellow'];
 
 const CONFIGS = {
-  easy: { sequenceLength: 3, flashDurationMs: 800, flashIntervalMs: 400, timerSeconds: 90 },
-  medium: { sequenceLength: 5, flashDurationMs: 500, flashIntervalMs: 300, timerSeconds: 60 }
+  easy: { sequenceLength: 3, flashDurationMs: 800, flashIntervalMs: 400, timerSeconds: 30 },
+  medium: { sequenceLength: 5, flashDurationMs: 500, flashIntervalMs: 300, timerSeconds: 20 }
 };
 
 export default function SimonGamePage() {
+  const [difficulty, setDifficulty] = useState<Difficulty>(() => {
+    const saved = localStorage.getItem('simon_difficulty');
+    return (saved === 'easy' || saved === 'medium') ? saved : 'medium';
+  });
+  const [secondsLeft, setSecondsLeft] = useState(() => {
+    const saved = localStorage.getItem('simon_difficulty');
+    const diff = (saved === 'easy' || saved === 'medium') ? saved : 'medium';
+    return CONFIGS[diff].timerSeconds;
+  });
   const [phase, setPhase] = useState<GamePhase>('idle');
-  const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const [sequence, setSequence] = useState<Color[]>([]);
   const [playerInputs, setPlayerInputs] = useState<Color[]>([]);
   const [flashingColor, setFlashingColor] = useState<Color | null>(null);
   const [currentFlashIndex, setCurrentFlashIndex] = useState(0);
-  const [secondsLeft, setSecondsLeft] = useState(60);
   const [logs, setLogs] = useState<ScoreRecord[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(true);
 
@@ -75,9 +83,7 @@ export default function SimonGamePage() {
   useEffect(() => {
     if (phase === 'success' || phase === 'fail') {
       const timeTakenMs = Date.now() - startTimeRef.current;
-      const baseScore = difficulty === 'easy' ? 100 : 250;
-      const timeBonus = Math.max(0, activeConfig.timerSeconds * 1000 - timeTakenMs);
-      const score = phase === 'success' ? Math.round(baseScore + timeBonus / 100) : 0;
+      const score = calculateCoinsReward(difficulty === 'easy' ? 'easy' : 'medium', timeTakenMs, activeConfig.timerSeconds, phase === 'success');
 
       const autoSave = async () => {
         try {
@@ -210,6 +216,7 @@ export default function SimonGamePage() {
                     key={d}
                     onClick={() => {
                       setDifficulty(d);
+                      localStorage.setItem('simon_difficulty', d);
                       setSecondsLeft(CONFIGS[d].timerSeconds);
                     }}
                     className={`flex-1 py-2.5 rounded font-bold uppercase tracking-widest text-xs border transition-all cursor-pointer ${

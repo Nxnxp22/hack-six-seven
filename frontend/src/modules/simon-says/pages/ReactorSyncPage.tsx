@@ -3,52 +3,124 @@ import {
   COLORS,
   generateSequence,
   checkPartialInput,
-  calculateScore,
   type Color,
   type Difficulty,
   type GamePhase,
 } from "../apis/gameEngine";
+import {
+  calculateCoinsReward,
+  calculateStabilityChange,
+  SHARED_GAME_RULES,
+} from "../apis/sharedRules";
 import { createScore } from "../apis/scoreApi";
 import SimonButton from "../components/SimonButton";
 import Leaderboard from "../components/Leaderboard";
 
 export default function ReactorSyncPage() {
   const [phase, setPhase] = useState<GamePhase>("idle");
-  const [config, setConfig] = useState({
-    sequenceLength: 5,
-    flashDurationMs: 500,
-    flashIntervalMs: 300,
-    timerSeconds: 60,
+  const [config, setConfig] = useState(() => {
+    const saved = localStorage.getItem("reactor_game_config");
+    try {
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const seqLength = parsed.sequenceLength || 5;
+        const difficulty = seqLength <= 4 ? "easy" : seqLength <= 6 ? "medium" : "hard";
+        parsed.timerSeconds = difficulty === "easy" ? 30 : difficulty === "medium" ? 20 : 15;
+        return parsed;
+      }
+    } catch (e) {}
+    return {
+      sequenceLength: 5,
+      flashDurationMs: 500,
+      flashIntervalMs: 300,
+      timerSeconds: 20,
+    };
   });
-  const [dynamicDifficulty, setDynamicDifficulty] =
-    useState<Difficulty>("medium");
+  const [dynamicDifficulty, setDynamicDifficulty] = useState<Difficulty>(() => {
+    const saved = localStorage.getItem("reactor_game_difficulty");
+    return (saved === "easy" || saved === "medium" || saved === "hard") ? saved : "medium";
+  });
   const [sequence, setSequence] = useState<Color[]>([]);
   const [playerInputs, setPlayerInputs] = useState<Color[]>([]);
   const [flashingColor, setFlashingColor] = useState<Color | null>(null);
   const [currentFlashIndex, setCurrentFlashIndex] = useState(0);
-  const [secondsLeft, setSecondsLeft] = useState(60);
+  const [hintsUsed, setHintsUsed] = useState(0);
+  const [secondsLeft, setSecondsLeft] = useState(() => {
+    const savedSeconds = localStorage.getItem("reactor_seconds_left");
+    if (savedSeconds) {
+      const parsedSeconds = parseInt(savedSeconds, 10);
+      if (!isNaN(parsedSeconds) && parsedSeconds > 0) {
+        return parsedSeconds;
+      }
+    }
+    const saved = localStorage.getItem("reactor_game_config");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const seqLength = parsed.sequenceLength || 5;
+        const difficulty = seqLength <= 4 ? "easy" : seqLength <= 6 ? "medium" : "hard";
+        return difficulty === "easy" ? 30 : difficulty === "medium" ? 20 : 15;
+      } catch (e) {}
+    }
+    return 20;
+  });
   const [showManual, setShowManual] = useState(false);
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const [playerName, setPlayerName] = useState("");
-  const [scoreSaved, setScoreSaved] = useState(false);
+  const [coins, setCoins] = useState(() => {
+    const saved = localStorage.getItem("operator_coins");
+    return saved ? parseInt(saved, 10) : 100;
+  });
+  const [stability, setStability] = useState(() => {
+    const saved = localStorage.getItem("reactor_stability");
+    return saved ? parseInt(saved, 10) : 50;
+  });
+  const [roundCoinsEarned, setRoundCoinsEarned] = useState(0);
+  const [roundStabilityDelta, setRoundStabilityDelta] = useState(0);
+  const [attemptsLeft, setAttemptsLeft] = useState(() => {
+    const saved = localStorage.getItem("reactor_attempts_left");
+    return saved ? parseInt(saved, 10) : 1;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("reactor_attempts_left", String(attemptsLeft));
+  }, [attemptsLeft]);
+
+
+
+  useEffect(() => {
+    localStorage.setItem("operator_coins", String(coins));
+  }, [coins]);
+
+  useEffect(() => {
+    localStorage.setItem("reactor_stability", String(stability));
+  }, [stability]);
+
+  useEffect(() => {
+    if (phase === "memorize" || phase === "replicate") {
+      localStorage.setItem("reactor_seconds_left", String(secondsLeft));
+    }
+  }, [secondsLeft, phase]);
+
+  useEffect(() => {
+    if (phase === "success" || phase === "fail") {
+      localStorage.removeItem("reactor_seconds_left");
+    }
+  }, [phase]);
 
   const startTimeRef = useRef<number>(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Timer
+  // Timer runs immediately upon entering the page (during idle, memorize, and replicate phases)
   useEffect(() => {
-    if (phase !== "replicate") return;
-    timerRef.current = setInterval(() => {
+    if (phase !== "replicate" && phase !== "idle" && phase !== "memorize") return;
+    const timer = setInterval(() => {
       setSecondsLeft((prev) => {
         if (prev <= 1) {
-          clearInterval(timerRef.current!);
           setPhase("fail");
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-    return () => clearInterval(timerRef.current!);
+    return () => clearInterval(timer);
   }, [phase]);
 
   // Flash sequence
@@ -61,7 +133,6 @@ export default function ReactorSyncPage() {
         if (i >= seq.length) {
           setFlashingColor(null);
           setPhase("replicate");
-          setSecondsLeft(gameConfig.timerSeconds);
           startTimeRef.current = Date.now();
           return;
         }
@@ -80,12 +151,16 @@ export default function ReactorSyncPage() {
     [],
   );
 
-  // Start game
-  const startGame = () => {
+  // Randomize game difficulty (config & sequence length)
+  const randomizeDifficulty = () => {
     const randomLength = Math.floor(Math.random() * 6) + 3; // 3 to 8 steps
-    const randomTimer = Math.floor(Math.random() * 61) + 30; // 30 to 90 seconds
+    const calculatedDifficulty =
+      randomLength <= 4 ? "easy" : randomLength <= 6 ? "medium" : "hard";
+    setDynamicDifficulty(calculatedDifficulty);
+    localStorage.setItem("reactor_game_difficulty", calculatedDifficulty);
 
-    // Choose dynamic speed based on length
+    const timerSeconds = calculatedDifficulty === "easy" ? 30 : calculatedDifficulty === "medium" ? 20 : 15;
+
     const randomFlashDuration =
       randomLength >= 7 ? 300 : randomLength >= 5 ? 500 : 800;
     const randomFlashInterval =
@@ -95,19 +170,93 @@ export default function ReactorSyncPage() {
       sequenceLength: randomLength,
       flashDurationMs: randomFlashDuration,
       flashIntervalMs: randomFlashInterval,
-      timerSeconds: randomTimer,
+      timerSeconds: timerSeconds,
     };
     setConfig(newConfig);
+    localStorage.setItem("reactor_game_config", JSON.stringify(newConfig));
+    setSecondsLeft(timerSeconds);
+  };
 
+  // Start new round with randomized difficulty
+  const startNewRound = () => {
+    const randomLength = Math.floor(Math.random() * 6) + 3; // 3 to 8 steps
     const calculatedDifficulty =
       randomLength <= 4 ? "easy" : randomLength <= 6 ? "medium" : "hard";
     setDynamicDifficulty(calculatedDifficulty);
+    localStorage.setItem("reactor_game_difficulty", calculatedDifficulty);
+
+    const timerSeconds = calculatedDifficulty === "easy" ? 30 : calculatedDifficulty === "medium" ? 20 : 15;
+
+    const randomFlashDuration =
+      randomLength >= 7 ? 300 : randomLength >= 5 ? 500 : 800;
+    const randomFlashInterval =
+      randomLength >= 7 ? 200 : randomLength >= 5 ? 300 : 400;
+
+    const newConfig = {
+      sequenceLength: randomLength,
+      flashDurationMs: randomFlashDuration,
+      flashIntervalMs: randomFlashInterval,
+      timerSeconds: timerSeconds,
+    };
+    setConfig(newConfig);
+    localStorage.setItem("reactor_game_config", JSON.stringify(newConfig));
+    setSecondsLeft(timerSeconds);
 
     const seq = generateSequence(randomLength);
     setSequence(seq);
     setPlayerInputs([]);
-    setScoreSaved(false);
+    setRoundCoinsEarned(0);
+    setRoundStabilityDelta(0);
+    setHintsUsed(0);
     flashSequence(seq, newConfig);
+  };
+
+  // Start game with currently set/loaded config
+  const startGame = () => {
+    const seq = generateSequence(config.sequenceLength);
+    setSequence(seq);
+    setPlayerInputs([]);
+    setRoundCoinsEarned(0);
+    setRoundStabilityDelta(0);
+    setHintsUsed(0);
+    
+    // Only reset timer seconds if there is no saved progress from a reload
+    const savedSeconds = localStorage.getItem("reactor_seconds_left");
+    if (!savedSeconds) {
+      setSecondsLeft(config.timerSeconds);
+    }
+
+    flashSequence(seq, config);
+  };
+
+  // Auto-start the game immediately when entering the page or when state goes to 'idle'
+  useEffect(() => {
+    if (phase === "idle") {
+      const savedSeconds = localStorage.getItem("reactor_seconds_left");
+      if (savedSeconds) {
+        startGame();
+      } else {
+        startNewRound(); // Randomize difficulty and start fresh!
+      }
+      setAttemptsLeft(1); // Reset attempts to 1 when starting a new game session
+    }
+  }, [phase]);
+
+  // Buy hint logic to replay the entire sequence
+  const buyHint = () => {
+    if (phase !== "replicate") return;
+    const cost = SHARED_GAME_RULES.hints.cost[hintsUsed];
+    if (coins < cost) {
+      alert("Not enough coins to buy a hint!");
+      return;
+    }
+    
+    // Deduct coins and record hint use
+    setCoins((prev) => prev - cost);
+    setHintsUsed((prev) => prev + 1);
+
+    // Replay the entire pattern sequence
+    flashSequence(sequence, config);
   };
 
   // Player clicks a button
@@ -117,44 +266,46 @@ export default function ReactorSyncPage() {
     setPlayerInputs(newInputs);
     const result = checkPartialInput(sequence, newInputs);
     if (result === "wrong") {
-      clearInterval(timerRef.current!);
       setPhase("fail");
     } else if (result === "correct") {
-      clearInterval(timerRef.current!);
       setPhase("success");
     }
   };
 
-  // Save score
-  const handleSaveScore = async () => {
-    if (!playerName.trim() || scoreSaved) return;
-    const timeTakenMs = Date.now() - startTimeRef.current;
-    const score = calculateScore(
-      dynamicDifficulty,
-      timeTakenMs,
-      phase === "success",
-    );
-    try {
-      await createScore({
-        playerName: playerName.trim(),
-        difficulty: dynamicDifficulty,
-        score,
-        win: phase === "success",
-        timeTakenMs,
-      });
-      setScoreSaved(true);
-    } catch {
-      alert("Failed to save score. Please try again.");
+  // Listen for phase transitions to calculate coins and stability exactly once
+  useEffect(() => {
+    if (phase === "success") {
+      const timeTakenMs = Date.now() - startTimeRef.current;
+      const earnedCoins = calculateCoinsReward(dynamicDifficulty, timeTakenMs, config.timerSeconds, true);
+      const stabilityDelta = calculateStabilityChange(dynamicDifficulty, true);
+      
+      setRoundCoinsEarned(earnedCoins);
+      setRoundStabilityDelta(stabilityDelta);
+      
+      setCoins((c) => c + earnedCoins);
+      setStability((s) => Math.min(100, Math.max(0, s + stabilityDelta)));
+      setAttemptsLeft(1); // Reset attempts on successful sync
+    } else if (phase === "fail") {
+      const stabilityDelta = calculateStabilityChange(dynamicDifficulty, false);
+      
+      setRoundCoinsEarned(0);
+      setRoundStabilityDelta(stabilityDelta);
+      
+      setStability((s) => Math.min(100, Math.max(0, s + stabilityDelta)));
+      setAttemptsLeft((prev) => Math.max(0, prev - 1)); // Deduct 1 attempt/heart on failure
     }
-  };
+  }, [phase, dynamicDifficulty, config.timerSeconds]);
+
+
 
   const progressDots = Array.from(
     { length: config.sequenceLength },
     (_, i) => i,
   );
 
-  const mins = String(Math.floor(secondsLeft / 60)).padStart(1, "0");
-  const secs = String(secondsLeft % 60).padStart(2, "0");
+  const displaySeconds = secondsLeft;
+  const mins = String(Math.floor(displaySeconds / 60)).padStart(1, "0");
+  const secs = String(displaySeconds % 60).padStart(2, "0");
   const timeString = `${mins}:${secs}`;
 
   return (
@@ -214,18 +365,34 @@ export default function ReactorSyncPage() {
         <div className="flex items-center gap-8">
           <div className="flex flex-col items-end leading-none">
             <span className="text-[9px] font-bold text-gray-500 tracking-widest mb-1 uppercase">
-              SEQ
+              ATTEMPTS
             </span>
             <span className="text-sm font-extrabold font-mono text-white">
-              {playerInputs.length}/{config.sequenceLength}
+              {attemptsLeft}/1
             </span>
           </div>
-          <div className="flex flex-col items-end leading-none">
+          <div className="flex flex-col items-end leading-none border-l border-[#222] pl-8">
             <span className="text-[9px] font-bold text-gray-500 tracking-widest mb-1 uppercase">
               TIME
             </span>
-            <span className="text-sm font-extrabold font-mono text-orange-500">
+            <span className="text-sm font-extrabold font-mono text-white">
               {timeString}
+            </span>
+          </div>
+          <div className="flex flex-col items-end leading-none border-l border-[#222] pl-8">
+            <span className="text-[9px] font-bold text-gray-500 tracking-widest mb-1 uppercase">
+              COINS
+            </span>
+            <span className="text-sm font-extrabold font-mono text-yellow-400">
+              {coins}
+            </span>
+          </div>
+          <div className="flex flex-col items-end leading-none border-l border-[#222] pl-8">
+            <span className="text-[9px] font-bold text-gray-500 tracking-widest mb-1 uppercase">
+              STABILITY
+            </span>
+            <span className={`text-sm font-extrabold font-mono ${stability > 50 ? 'text-green-400' : stability > 25 ? 'text-yellow-400' : 'text-red-500 animate-pulse'}`}>
+              {stability}%
             </span>
           </div>
         </div>
@@ -291,7 +458,7 @@ export default function ReactorSyncPage() {
           </div>
         )}
 
-        {/* Difficulty selector — replaced with random mode indicator */}
+        {/* Random mode indicator */}
         {phase === "idle" && (
           <div className="w-full mb-6 text-center animate-fadeIn">
           </div>
@@ -300,7 +467,7 @@ export default function ReactorSyncPage() {
         {(phase === "idle" || phase === "memorize") && (
           <div className="w-full border border-orange-500 bg-orange-950/20 rounded px-4 py-3 mb-4 text-xs text-orange-400 font-extrabold tracking-wider text-center uppercase flex items-center justify-center gap-2">
             <svg
-              className="w-4 h-4 text-orange-500 shrink-0"
+              className="w-4 h-4 text-orange-500 shrink-0 animate-pulse"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -335,39 +502,51 @@ export default function ReactorSyncPage() {
           </div>
         )}
         {phase === "success" && (
-          <div className="w-full border border-green-500 bg-green-950/20 rounded px-4 py-3 mb-4 text-xs text-green-400 font-extrabold tracking-wider text-center uppercase flex items-center justify-center gap-2">
-            <svg
-              className="w-4 h-4 text-green-500 shrink-0"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2.5"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            REACTOR SYNCHRONIZED! Sequence matched successfully.
+          <div className="w-full border border-green-500 bg-green-950/20 rounded px-4 py-3 mb-4 text-xs text-green-400 font-extrabold tracking-wider text-center uppercase flex flex-col items-center justify-center gap-1">
+            <div className="flex items-center gap-2">
+              <svg
+                className="w-4 h-4 text-green-500 shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              REACTOR SYNCHRONIZED! Sequence matched successfully.
+            </div>
+            <div className="text-[10px] text-green-500 font-bold tracking-widest mt-1">
+              +{roundCoinsEarned} COINS EARNED · +{roundStabilityDelta}% REACTOR STABILITY
+            </div>
           </div>
         )}
         {phase === "fail" && (
-          <div className="w-full border border-red-500 bg-red-950/20 rounded px-4 py-3 mb-4 text-xs text-red-400 font-extrabold tracking-wider text-center uppercase flex items-center justify-center gap-2">
-            <svg
-              className="w-4 h-4 text-red-500 shrink-0"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2.5"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            REACTOR MISMATCH! Cooling sequence failed.
+          <div className="w-full border border-red-500 bg-red-950/20 rounded px-4 py-3 mb-4 text-xs text-red-400 font-extrabold tracking-wider text-center uppercase flex flex-col items-center justify-center gap-1">
+            <div className="flex items-center gap-2">
+              <svg
+                className="w-4 h-4 text-red-500 shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              {attemptsLeft === 0
+                ? "CRITICAL CORE FAILURE! OUT OF ATTEMPTS!"
+                : `REACTOR MISMATCH! COOLING SEQUENCE FAILED. (${attemptsLeft} ATTEMPT${attemptsLeft > 1 ? "S" : ""} LEFT)`}
+            </div>
+            <div className="text-[10px] text-red-500 font-bold tracking-widest mt-1">
+              {roundStabilityDelta}% REACTOR STABILITY
+            </div>
           </div>
         )}
 
@@ -420,77 +599,61 @@ export default function ReactorSyncPage() {
           </div>
         )}
 
-        {/* Start button */}
-        {phase === "idle" && (
-          <button
-            onClick={startGame}
-            className="w-full bg-orange-600 hover:bg-orange-500 active:scale-98 text-white font-extrabold py-3.5 rounded text-xs tracking-widest uppercase transition-all cursor-pointer shadow-[0_4px_12px_rgba(234,88,12,0.2)] hover:shadow-[0_4px_20px_rgba(234,88,12,0.3)]"
-          >
-            START SYNCHRONIZATION
-          </button>
+        {/* Hint button */}
+        {phase === "replicate" && (
+          <div className="w-full mb-6 flex justify-center">
+            <button
+              onClick={buyHint}
+              disabled={hintsUsed >= 2 || coins < SHARED_GAME_RULES.hints.cost[hintsUsed]}
+              className={`px-6 py-2.5 rounded font-extrabold text-xs tracking-widest uppercase transition-all border cursor-pointer ${
+                hintsUsed >= 2
+                  ? "border-gray-800 text-gray-600 bg-transparent cursor-not-allowed"
+                  : coins < SHARED_GAME_RULES.hints.cost[hintsUsed]
+                  ? "border-red-950 bg-red-950/10 text-red-500/60 cursor-not-allowed animate-pulse"
+                  : "border-orange-500/55 hover:border-orange-500 bg-orange-500/5 hover:bg-orange-500/10 text-orange-400 shadow-[0_0_12px_rgba(249,115,22,0.05)] hover:shadow-[0_0_15px_rgba(249,115,22,0.1)] active:scale-98"
+              }`}
+            >
+              {hintsUsed >= 2
+                ? "HINTS DEPLETED"
+                : `BUY HINT (${SHARED_GAME_RULES.hints.cost[hintsUsed]} COINS)`}
+            </button>
+          </div>
         )}
+
 
         {/* After game options */}
         {(phase === "success" || phase === "fail") && (
           <div className="w-full space-y-4">
-            {!scoreSaved ? (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Enter your name"
-                  value={playerName}
-                  onChange={(e) => setPlayerName(e.target.value)}
-                  maxLength={30}
-                  className="flex-1 bg-[#0F0F0F] border border-gray-800 rounded px-3 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-orange-500/70"
-                />
+            <div className="space-y-2">
+              {phase === "fail" && attemptsLeft > 0 && (
                 <button
-                  onClick={handleSaveScore}
-                  className="bg-orange-600 hover:bg-orange-500 text-white font-bold px-5 py-2.5 rounded text-xs tracking-wider cursor-pointer"
+                  onClick={startNewRound}
+                  className="w-full bg-orange-600 hover:bg-orange-500 text-white font-extrabold py-3.5 rounded text-xs tracking-widest cursor-pointer transition-colors uppercase shadow-[0_4px_12px_rgba(234,88,12,0.2)]"
                 >
-                  SAVE
+                  NEW ROUND
                 </button>
-              </div>
-            ) : (
-              <p className="text-center text-green-400 text-xs font-bold tracking-wider">
-                ✓ Score saved successfully!
-              </p>
-            )}
-            <div className="flex gap-2">
-              <button
-                onClick={startGame}
-                className="flex-1 bg-[#121212] hover:bg-[#1A1A1A] border border-gray-850 text-white font-bold py-2.5 rounded text-xs tracking-wider cursor-pointer transition-colors"
-              >
-                RETRY
-              </button>
+              )}
               <button
                 onClick={() => {
                   setPhase("idle");
                   setPlayerInputs([]);
                   setSequence([]);
+                  setSecondsLeft(config.timerSeconds);
+                  setAttemptsLeft(1); // Reset attempts back to 1
+                  localStorage.removeItem("reactor_seconds_left"); // Explicitly clear saved seconds
                 }}
-                className="flex-1 bg-[#121212] hover:bg-[#1A1A1A] border border-gray-850 text-white font-bold py-2.5 rounded text-xs tracking-wider cursor-pointer transition-colors"
+                className="w-full bg-[#121212] hover:bg-[#1A1A1A] border border-gray-850 text-white font-bold py-2.5 rounded text-xs tracking-wider cursor-pointer transition-colors uppercase"
               >
-                MENU
-              </button>
-              <button
-                onClick={() => setShowLeaderboard(true)}
-                className="flex-1 bg-orange-950/30 hover:bg-orange-950/50 border border-orange-500/40 text-orange-400 font-bold py-2.5 rounded text-xs tracking-wider cursor-pointer transition-colors"
-              >
-                SCORES
+                {phase === "success"
+                  ? "SUCCESS · RETURN TO MENU"
+                  : phase === "fail" && attemptsLeft === 0
+                  ? "RETURN TO MENU"
+                  : "MENU"}
               </button>
             </div>
           </div>
         )}
       </div>
-
-      {/* Leaderboard modal */}
-      {showLeaderboard && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-[#0B0B0B] border border-[#222] rounded-lg p-6 max-w-md w-full max-h-[80vh] overflow-y-auto shadow-[0_0_30px_rgba(249,115,22,0.1)] animate-fadeIn">
-            <Leaderboard onClose={() => setShowLeaderboard(false)} />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

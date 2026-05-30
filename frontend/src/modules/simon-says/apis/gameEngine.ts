@@ -18,21 +18,21 @@ export const DIFFICULTY_CONFIG: Record<Difficulty, GameConfig> = {
     sequenceLength: 3,
     flashDurationMs: 800,
     flashIntervalMs: 400,
-    timerSeconds: 90,
+    timerSeconds: 30,
   },
   medium: {
     difficulty: 'medium',
     sequenceLength: 5,
     flashDurationMs: 500,
     flashIntervalMs: 300,
-    timerSeconds: 60,
+    timerSeconds: 20,
   },
   hard: {
     difficulty: 'hard',
     sequenceLength: 7,
     flashDurationMs: 300,
     flashIntervalMs: 200,
-    timerSeconds: 40,
+    timerSeconds: 15,
   },
 };
 
@@ -48,10 +48,9 @@ export function checkPartialInput(sequence: Color[], inputs: Color[]): 'correct'
   return 'incomplete';
 }
 
+import { calculateCoinsReward } from './sharedRules';
+
 export function calculateScore(difficulty: Difficulty, timeTakenMs: number, win: boolean): number {
-  if (!win) return 0;
-  const base = { easy: 100, medium: 250, hard: 500 }[difficulty];
-  const config = DIFFICULTY_CONFIG[difficulty];
-  const timeBonus = Math.max(0, config.timerSeconds * 1000 - timeTakenMs);
-  return Math.round(base + timeBonus / 100);
+  const timerSeconds = DIFFICULTY_CONFIG[difficulty]?.timerSeconds || 60;
+  return calculateCoinsReward(difficulty, timeTakenMs, timerSeconds, win);
 }
