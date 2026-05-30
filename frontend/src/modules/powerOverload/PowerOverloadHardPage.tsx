@@ -12,10 +12,16 @@ const PowerOverloadHardPage: React.FC = () => {
   const [rules, setRules] = useState<DBManualRule[]>([]);
 
   useEffect(() => {
-    fetchNewGame("HARD")
+    const savedSessionId = sessionStorage.getItem("active_game_session_id");
+    const savedDifficulty = sessionStorage.getItem("active_game_difficulty");
+    const restoreId = savedDifficulty === "HARD" ? (savedSessionId || undefined) : undefined;
+
+    fetchNewGame("HARD", restoreId)
       .then((data) => {
         setGame(data);
         setSeconds(data.timeLimitSeconds);
+        sessionStorage.setItem("active_game_session_id", data.sessionId);
+        sessionStorage.setItem("active_game_difficulty", "HARD");
       })
       .catch((err) => console.error("Error connecting to Hard game:", err));
 
@@ -154,6 +160,8 @@ const PowerOverloadHardPage: React.FC = () => {
   // Handle Timeout
   useEffect(() => {
     if (game && seconds === 0) {
+      sessionStorage.removeItem("active_game_session_id");
+      sessionStorage.removeItem("active_game_difficulty");
       alert("CRITICAL OVERLOAD FAILURE: TIME EXPIRED! Stability lost: -10%");
       navigate("/", { state: { stabilityLost: 10, status: "FAILED", feature: "powerOverload" } });
     }
@@ -166,6 +174,8 @@ const PowerOverloadHardPage: React.FC = () => {
       if (response.success) {
         setGame({ ...game, currentCuts: response.currentCuts });
         if (response.isGameOver) {
+          sessionStorage.removeItem("active_game_session_id");
+          sessionStorage.removeItem("active_game_difficulty");
           const coinsGained = 10 + Math.floor((seconds / game.timeLimitSeconds) * 30);
           alert(
             response.message ||
@@ -181,6 +191,8 @@ const PowerOverloadHardPage: React.FC = () => {
           });
         }
       } else {
+        sessionStorage.removeItem("active_game_session_id");
+        sessionStorage.removeItem("active_game_difficulty");
         alert(
           response.message || "CRITICAL OVERLOAD FAILURE! Stability lost: -10%",
         );

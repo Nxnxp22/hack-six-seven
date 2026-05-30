@@ -12,10 +12,16 @@ const PowerOverloadEasyPage: React.FC = () => {
   const [rules, setRules] = useState<DBManualRule[]>([]);
 
   useEffect(() => {
-    fetchNewGame("EASY")
+    const savedSessionId = sessionStorage.getItem("active_game_session_id");
+    const savedDifficulty = sessionStorage.getItem("active_game_difficulty");
+    const restoreId = savedDifficulty === "EASY" ? (savedSessionId || undefined) : undefined;
+
+    fetchNewGame("EASY", restoreId)
       .then((data) => {
         setGame(data);
         setSeconds(data.timeLimitSeconds);
+        sessionStorage.setItem("active_game_session_id", data.sessionId);
+        sessionStorage.setItem("active_game_difficulty", "EASY");
       })
       .catch((err) => console.error("Error connecting to Easy game:", err));
 
@@ -92,6 +98,8 @@ const PowerOverloadEasyPage: React.FC = () => {
   // Handle Timeout
   useEffect(() => {
     if (game && seconds === 0) {
+      sessionStorage.removeItem("active_game_session_id");
+      sessionStorage.removeItem("active_game_difficulty");
       alert("CRITICAL OVERLOAD FAILURE: TIME EXPIRED! Stability lost: -10%");
       navigate("/", { state: { stabilityLost: 10, status: "FAILED", feature: "powerOverload" } });
     }
@@ -104,11 +112,15 @@ const PowerOverloadEasyPage: React.FC = () => {
       if (response.success) {
         setGame({ ...game, currentCuts: response.currentCuts });
         if (response.isGameOver) {
+          sessionStorage.removeItem("active_game_session_id");
+          sessionStorage.removeItem("active_game_difficulty");
           const coinsGained = 10 + Math.floor((seconds / game.timeLimitSeconds) * 30);
           alert(response.message || `SUCCESSFULLY DEFUSED! Stability restored: +10% | Coins earned: +${coinsGained} 🪙`);
           navigate("/", { state: { stabilityGained: 10, coinsGained, status: "SUCCESS", feature: "powerOverload" } });
         }
       } else {
+        sessionStorage.removeItem("active_game_session_id");
+        sessionStorage.removeItem("active_game_difficulty");
         alert(response.message || "CRITICAL OVERLOAD FAILURE! Stability lost: -10%");
         navigate("/", { state: { stabilityLost: 10, status: "FAILED", feature: "powerOverload" } });
       }

@@ -18,8 +18,14 @@ export interface DBCriticalTemplate {
 
 // ─── Game session ─────────────────────────────────────────────────────────────
 
-export const fetchNewGame = async (difficulty?: string): Promise<GameState> => {
-  const response = await axios.post(`${API_URL}/game/start`, { difficulty });
+export const fetchNewGame = async (
+  difficulty?: string,
+  restoreSessionId?: string,
+): Promise<GameState> => {
+  const response = await axios.post(`${API_URL}/game/start`, {
+    difficulty,
+    restoreSessionId,
+  });
   return response.data;
 };
 

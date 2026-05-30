@@ -109,8 +109,69 @@ const solveGrid = (wireList: Wire[], diff: string): number[] => {
  */
 export const getNewGame = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { difficulty } = req.body;
+    const { difficulty, restoreSessionId } = req.body;
     const diff = (difficulty || 'EASY').toUpperCase() as 'EASY' | 'MEDIUM' | 'HARD';
+
+    if (restoreSessionId) {
+      const existing = sessions.get(restoreSessionId);
+      if (existing && existing.difficulty === diff) {
+        const template = await getCriticalTemplateFromDB(diff);
+        if (template) {
+          const getSystemName = (color: string): string => {
+            switch (color) {
+              case 'RED': return 'DANGER-CORE';
+              case 'BLUE': return 'HYDRO-GRID';
+              case 'GREEN': return 'BIO-SYNAPSE';
+              case 'YELLOW': return 'SOLAR-VOLT';
+              case 'CYAN': return 'CRYO-LINK';
+              case 'ORANGE': return 'THERMO-CELL';
+              case 'PURPLE': return 'VOID-NODE';
+              default: return 'SYSTEM-NODE';
+            }
+          };
+
+          const getHexColor = (color: string): string => {
+            switch (color) {
+              case 'RED': return '#E11D48';
+              case 'BLUE': return '#2563EB';
+              case 'GREEN': return '#00C838';
+              case 'YELLOW': return '#FFBC00';
+              case 'CYAN': return '#00B4DB';
+              case 'ORANGE': return '#F97316';
+              case 'PURPLE': return '#9333EA';
+              default: return '#FFFFFF';
+            }
+          };
+
+          let instruction = '';
+          if (diff === 'EASY') {
+            const color = existing.wires[existing.correctSequence[0]]?.color || 'GREEN';
+            instruction = template.replace('{color}', color);
+          } else if (diff === 'MEDIUM') {
+            const hex1 = getHexColor(existing.wires[existing.correctSequence[0]]?.color);
+            const hex2 = getHexColor(existing.wires[existing.correctSequence[1]]?.color);
+            instruction = template.replace('{hex1}', hex1).replace('{hex2}', hex2);
+          } else {
+            const name1 = getSystemName(existing.wires[existing.correctSequence[0]]?.color);
+            const name2 = getSystemName(existing.wires[existing.correctSequence[1]]?.color);
+            const name3 = getSystemName(existing.wires[existing.correctSequence[2]]?.color);
+            instruction = template.replace('{name1}', name1).replace('{name2}', name2).replace('{name3}', name3);
+          }
+
+          res.status(200).json({
+            sessionId: existing.sessionId,
+            serialNumber: existing.serialNumber,
+            difficulty: existing.difficulty,
+            instruction,
+            totalCutsNeeded: existing.totalCutsNeeded,
+            currentCuts: existing.cutHistory.length,
+            timeLimitSeconds: existing.timeLimitSeconds,
+            wires: existing.wires
+          });
+          return;
+        }
+      }
+    }
 
     const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     const randLetter = () => letters[Math.floor(Math.random() * letters.length)];
@@ -119,7 +180,7 @@ export const getNewGame = async (req: Request, res: Response): Promise<void> => 
 
     let generatedWires: Wire[] = [];
     let neededCuts = 1;
-    let timeLimit = 73;
+    let timeLimit = 60;
 
     if (diff === 'EASY') {
       generatedWires = [
@@ -128,7 +189,7 @@ export const getNewGame = async (req: Request, res: Response): Promise<void> => 
         { id: 'w3', color: 'CYAN', label: 'CYAN', isCut: false }
       ];
       neededCuts = 1;
-      timeLimit = 73;
+      timeLimit = 60;
     } else if (diff === 'MEDIUM') {
       generatedWires = [
         { id: 'w1', color: 'GREEN', label: 'GREEN', isCut: false },
@@ -138,7 +199,7 @@ export const getNewGame = async (req: Request, res: Response): Promise<void> => 
         { id: 'w5', color: 'PURPLE', label: 'PURPLE', isCut: false }
       ];
       neededCuts = 2;
-      timeLimit = 120;
+      timeLimit = 30;
     } else {
       generatedWires = [
         { id: 'w1', color: 'GREEN', label: 'GREEN', isCut: false },
@@ -148,7 +209,7 @@ export const getNewGame = async (req: Request, res: Response): Promise<void> => 
         { id: 'w5', color: 'PURPLE', label: 'PURPLE', isCut: false }
       ];
       neededCuts = 3;
-      timeLimit = 180;
+      timeLimit = 25;
     }
 
     const sessionId = `sess_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
