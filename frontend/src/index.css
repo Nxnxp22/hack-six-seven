@@ -57,3 +57,12 @@
 .animate-pulse-slow {
   animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+@keyframes stability-blink {
+  0%, 100% { opacity: 1; filter: brightness(1); }
+  50% { opacity: 0.45; filter: brightness(1.35); }
+}
+
+.stability-critical-blink {
+  animation: stability-blink 0.85s ease-in-out infinite;
+}

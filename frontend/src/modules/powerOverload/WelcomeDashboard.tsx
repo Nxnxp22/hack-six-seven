@@ -39,6 +39,17 @@ const WelcomeDashboard: React.FC = () => {
       {/* Background Cyber Grid */}
       <div className="absolute inset-0 cyber-grid opacity-30 pointer-events-none"></div>
 
+      {/* Back button */}
+      <button
+        onClick={() => navigate("/")}
+        className="absolute top-6 left-6 z-20 flex items-center gap-2 text-zinc-500 hover:text-yellow-400 text-xs uppercase tracking-widest transition-colors font-mono"
+      >
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+        </svg>
+        BACK TO HUB
+      </button>
+
       {/* Decorative cyber elements */}
       <div className="absolute top-8 left-8 right-8 flex items-center justify-between pointer-events-none opacity-40 text-xs font-mono">
         <div className="flex items-center gap-2">
@@ -67,9 +78,7 @@ const WelcomeDashboard: React.FC = () => {
               coolant pressure is failing. The system requires manual sequence
               decryptions by cutting the correct sequence of power wires. Review
               the{" "}
-              <span className="text-yellow-500 font-bold">
-                NEXUS HACKING MANUAL
-              </span>{" "}
+              <span className="text-yellow-500 font-bold">NEXUS HACKING MANUAL</span>{" "}
               inline during operations to avoid an immediate explosive reaction.
             </p>
           </div>
@@ -79,21 +88,13 @@ const WelcomeDashboard: React.FC = () => {
               <Terminal className="w-3 h-3 text-yellow-500" />
               <span>Core Console Feed</span>
             </div>
-            {logs.map((log, index) => {
-              if (!log) return null;
-              return (
-                <p
-                  key={index}
-                  className={`truncate ${log.includes("WARNING") ? "text-red-400" : "text-zinc-400"}`}
-                >
-                  &gt; {log}
-                </p>
-              );
-            })}
-            {systemOnline && (
-              <p className="text-emerald-400 font-bold animate-pulse">
-                &gt; GRID OVERRIDE CONSOLE READY.
+            {logs.map((log, index) => (
+              <p key={index} className={`truncate ${log.includes("WARNING") ? "text-red-400" : "text-zinc-400"}`}>
+                &gt; {log}
               </p>
+            ))}
+            {systemOnline && (
+              <p className="text-emerald-400 font-bold animate-pulse">&gt; GRID OVERRIDE CONSOLE READY.</p>
             )}
           </div>
         </div>
@@ -106,60 +107,54 @@ const WelcomeDashboard: React.FC = () => {
           </h2>
 
           <div className="space-y-4">
-            {/* Easy level */}
             <button
               onClick={() => handleStartHacking("EASY")}
-              className="w-full text-left group border border-zinc-900 hover:border-yellow-500/50 bg-zinc-950 hover:bg-yellow-500/[0.02] p-4 rounded-xl transition-all duration-300 relative overflow-hidden"
+              className="w-full text-left group border border-zinc-900 hover:border-yellow-500/50 bg-zinc-950 hover:bg-yellow-500/[0.02] p-4 rounded-xl transition-all duration-300"
             >
               <div className="flex justify-between items-start mb-1.5">
                 <h3 className="font-bold text-sm tracking-wide text-zinc-200 group-hover:text-yellow-500 transition-colors">
                   EASY PROTOCOL
                 </h3>
                 <span className="text-[9px] font-bold font-mono px-2 py-0.5 bg-yellow-500/10 text-yellow-500 rounded border border-yellow-500/20">
-                  3 WIRES • 1 CUT
+                  3 WIRES · 1 CUT
                 </span>
               </div>
               <p className="text-[11px] text-zinc-500 group-hover:text-zinc-400 transition-colors">
-                Simple grid configuration. Perfect for validating hacking
-                console connectivity.
+                Simple grid configuration. Perfect for validating hacking console connectivity.
               </p>
             </button>
 
-            {/* Medium level */}
             <button
               onClick={() => handleStartHacking("MEDIUM")}
-              className="w-full text-left group border border-zinc-900 hover:border-orange-500/50 bg-zinc-950 hover:bg-orange-500/[0.02] p-4 rounded-xl transition-all duration-300 relative overflow-hidden"
+              className="w-full text-left group border border-zinc-900 hover:border-orange-500/50 bg-zinc-950 hover:bg-orange-500/[0.02] p-4 rounded-xl transition-all duration-300"
             >
               <div className="flex justify-between items-start mb-1.5">
                 <h3 className="font-bold text-sm tracking-wide text-zinc-200 group-hover:text-orange-500 transition-colors">
                   MEDIUM PROTOCOL
                 </h3>
                 <span className="text-[9px] font-bold font-mono px-2 py-0.5 bg-orange-500/10 text-orange-400 rounded border border-orange-500/20">
-                  5 WIRES • 2 CUTS
+                  5 WIRES · 2 CUTS
                 </span>
               </div>
               <p className="text-[11px] text-zinc-500 group-hover:text-zinc-400 transition-colors">
-                Intermediate sequencing. Requires careful verification of
-                conflicting conditions.
+                Intermediate sequencing. Requires careful verification of conflicting conditions.
               </p>
             </button>
 
-            {/* Hard level */}
             <button
               onClick={() => handleStartHacking("HARD")}
-              className="w-full text-left group border border-zinc-900 hover:border-red-500/50 bg-zinc-950 hover:bg-red-500/[0.02] p-4 rounded-xl transition-all duration-300 relative overflow-hidden"
+              className="w-full text-left group border border-zinc-900 hover:border-red-500/50 bg-zinc-950 hover:bg-red-500/[0.02] p-4 rounded-xl transition-all duration-300"
             >
               <div className="flex justify-between items-start mb-1.5">
                 <h3 className="font-bold text-sm tracking-wide text-zinc-200 group-hover:text-red-500 transition-colors">
                   HARD PROTOCOL
                 </h3>
                 <span className="text-[9px] font-bold font-mono px-2 py-0.5 bg-red-500/10 text-red-400 rounded border border-red-500/20">
-                  7 WIRES • 3 CUTS
+                  7 WIRES · 3 CUTS
                 </span>
               </div>
               <p className="text-[11px] text-zinc-500 group-hover:text-zinc-400 transition-colors">
-                Highly unstable system. Complex overlapping multi-wire severance
-                sequence required.
+                Highly unstable system. Complex overlapping multi-wire severance sequence required.
               </p>
             </button>
           </div>
