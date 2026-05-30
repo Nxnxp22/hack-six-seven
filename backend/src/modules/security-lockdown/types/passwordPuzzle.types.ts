@@ -11,7 +11,17 @@ export interface PuzzlePublicDTO {
   title: string
   difficulty: Difficulty
   clueText: string
+  timeLimit: number
   hints: HintMetadata[]
+}
+
+export interface GameStateDTO {
+  securityStability: number
+  powerStability: number
+  reactorStability: number
+  communicationStability: number
+  globalStability: number
+  coins: number
 }
 
 export interface RevealHintRequestDTO {
@@ -31,6 +41,7 @@ export interface SubmitRequestDTO {
   timeTaken: number
   hintsUsed: number
   coinsSpentHints: number
+  timedOut?: boolean
 }
 
 export interface SubmitResponseDTO {
@@ -38,7 +49,8 @@ export interface SubmitResponseDTO {
   stabilityChange: number
   coinsChange: number
   currentCoins: number
-  currentStability: number
+  securityStability: number
+  globalStability: number
   timeTaken: number
   hintsUsed: number
   coinsSpentHints: number
