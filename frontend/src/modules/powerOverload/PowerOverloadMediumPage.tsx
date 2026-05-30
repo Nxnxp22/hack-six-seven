@@ -21,7 +21,9 @@ const PowerOverloadMediumPage: React.FC = () => {
 
     fetchManualRules("MEDIUM")
       .then((data) => setRules(data))
-      .catch((err) => console.error("Error fetching Medium manual rules:", err));
+      .catch((err) =>
+        console.error("Error fetching Medium manual rules:", err),
+      );
   }, []);
 
   useEffect(() => {
@@ -39,57 +41,130 @@ const PowerOverloadMediumPage: React.FC = () => {
   const renderRuleText = (text: string) => {
     const words = text.split(" ");
     return words.map((word, idx) => {
-      const cleanWord = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").toUpperCase();
+      const cleanWord = word
+        .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "")
+        .toUpperCase();
       if (cleanWord === "RED" || cleanWord === "CRIMSON") {
-        return <span key={idx} className="text-rose-500 font-semibold mx-0.5">{word}</span>;
+        return (
+          <span key={idx} className="text-rose-500 font-semibold mx-0.5">
+            {word}
+          </span>
+        );
       }
       if (cleanWord === "BLUE") {
-        return <span key={idx} className="text-blue-500 font-semibold mx-0.5">{word}</span>;
+        return (
+          <span key={idx} className="text-blue-500 font-semibold mx-0.5">
+            {word}
+          </span>
+        );
       }
       if (cleanWord === "GREEN" || cleanWord === "EMERALD") {
-        return <span key={idx} className="text-emerald-500 font-semibold mx-0.5">{word}</span>;
+        return (
+          <span key={idx} className="text-emerald-500 font-semibold mx-0.5">
+            {word}
+          </span>
+        );
       }
       if (cleanWord === "YELLOW" || cleanWord === "AMBER") {
-        return <span key={idx} className="text-amber-400 font-semibold mx-0.5">{word}</span>;
+        return (
+          <span key={idx} className="text-amber-400 font-semibold mx-0.5">
+            {word}
+          </span>
+        );
       }
       if (cleanWord === "CYAN" || cleanWord === "NEON-CYAN") {
-        return <span key={idx} className="text-cyan-400 font-semibold mx-0.5">{word}</span>;
+        return (
+          <span key={idx} className="text-cyan-400 font-semibold mx-0.5">
+            {word}
+          </span>
+        );
       }
       if (cleanWord === "ORANGE") {
-        return <span key={idx} className="text-orange-500 font-semibold mx-0.5">{word}</span>;
+        return (
+          <span key={idx} className="text-orange-500 font-semibold mx-0.5">
+            {word}
+          </span>
+        );
       }
       if (cleanWord === "PURPLE" || cleanWord === "AMETHYST") {
-        return <span key={idx} className="text-purple-500 font-semibold mx-0.5">{word}</span>;
+        return (
+          <span key={idx} className="text-purple-500 font-semibold mx-0.5">
+            {word}
+          </span>
+        );
       }
-      if (cleanWord === "1ST" || cleanWord === "2ND" || cleanWord === "3RD" || cleanWord === "4TH" || cleanWord === "LAST" || cleanWord === "TOP" || cleanWord === "MIDDLE") {
-        return <span key={idx} className="text-white font-semibold mx-0.5">{word}</span>;
+      if (
+        cleanWord === "1ST" ||
+        cleanWord === "2ND" ||
+        cleanWord === "3RD" ||
+        cleanWord === "4TH" ||
+        cleanWord === "LAST" ||
+        cleanWord === "TOP" ||
+        cleanWord === "MIDDLE"
+      ) {
+        return (
+          <span key={idx} className="text-white font-semibold mx-0.5">
+            {word}
+          </span>
+        );
       }
-      return <span key={idx} className="mx-0.5">{word}</span>;
+      return (
+        <span key={idx} className="mx-0.5">
+          {word}
+        </span>
+      );
     });
   };
 
   const renderInstruction = (instruction: string) => {
-    const colors = ["GREEN", "YELLOW", "CYAN", "RED", "BLUE", "ORANGE", "PURPLE", "EMERALD", "AMBER", "NEON-CYAN", "CRIMSON", "AMETHYST"];
+    const colors = [
+      "GREEN",
+      "YELLOW",
+      "CYAN",
+      "RED",
+      "BLUE",
+      "ORANGE",
+      "PURPLE",
+      "EMERALD",
+      "AMBER",
+      "NEON-CYAN",
+      "CRIMSON",
+      "AMETHYST",
+    ];
     const words = instruction.split(" ");
-    
+
     return words.map((word, index) => {
-      const cleanWord = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").toUpperCase();
+      const cleanWord = word
+        .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "")
+        .toUpperCase();
       const hasDash = word.includes("-");
       const isHex = cleanWord.startsWith("#");
-      
+
       if (colors.includes(cleanWord) || isHex || hasDash) {
         return (
-          <span 
-            key={index} 
+          <span
+            key={index}
             className="text-yellow-500 text-xl font-black mx-1.5 transition-all duration-300 uppercase text-glow-yellow"
           >
             {word}
           </span>
         );
       }
-      return <span key={index} className="mx-0.5">{word}</span>;
+      return (
+        <span key={index} className="mx-0.5">
+          {word}
+        </span>
+      );
     });
   };
+
+  // Handle Timeout
+  useEffect(() => {
+    if (game && seconds === 0) {
+      alert("CRITICAL OVERLOAD FAILURE: TIME EXPIRED! Stability lost: -10%");
+      navigate("/", { state: { stabilityLost: 10, status: "FAILED", feature: "powerOverload" } });
+    }
+  }, [seconds, game, navigate]);
 
   const handleWireCut = async (wireId: string) => {
     if (!game) return;
@@ -98,12 +173,31 @@ const PowerOverloadMediumPage: React.FC = () => {
       if (response.success) {
         setGame({ ...game, currentCuts: response.currentCuts });
         if (response.isGameOver) {
-          alert(response.message || "SUCCESSFULLY DEFUSED! Stability restored: +25%");
-          navigate("/", { state: { stabilityGained: 25, status: "SUCCESS", feature: "powerOverload" } });
+          const coinsGained = 10 + Math.floor((seconds / game.timeLimitSeconds) * 30);
+          alert(
+            response.message ||
+              `SUCCESSFULLY DEFUSED! Stability restored: +15% | Coins earned: +${coinsGained} 🪙`,
+          );
+          navigate("/", {
+            state: {
+              stabilityGained: 15,
+              coinsGained,
+              status: "SUCCESS",
+              feature: "powerOverload",
+            },
+          });
         }
       } else {
-        alert(response.message || "CRITICAL OVERLOAD FAILURE! Stability lost: -15%");
-        navigate("/", { state: { stabilityLost: 15, status: "FAILED", feature: "powerOverload" } });
+        alert(
+          response.message || "CRITICAL OVERLOAD FAILURE! Stability lost: -10%",
+        );
+        navigate("/", {
+          state: {
+            stabilityLost: 10,
+            status: "FAILED",
+            feature: "powerOverload",
+          },
+        });
       }
     } catch (error) {
       console.error("Error standardizing wire execution:", error);
@@ -130,15 +224,28 @@ const PowerOverloadMediumPage: React.FC = () => {
             onClick={() => navigate(-1)}
             className="text-zinc-400 hover:text-white text-xs uppercase font-semibold tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            <svg
+              className="w-3.5 h-3.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15 19l-7-7 7-7"
+              />
             </svg>
             BACK
           </button>
 
           {/* Logo always shows normal header */}
           <div className="text-yellow-500 font-extrabold text-xs tracking-[0.25em] uppercase flex items-center gap-2">
-            <svg className="w-3.5 h-3.5 fill-current text-yellow-500 animate-pulse" viewBox="0 0 24 24">
+            <svg
+              className="w-3.5 h-3.5 fill-current text-yellow-500 animate-pulse"
+              viewBox="0 0 24 24"
+            >
               <path d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
             POWER OVERLOAD [MEDIUM]
@@ -154,12 +261,25 @@ const PowerOverloadMediumPage: React.FC = () => {
             }`}
           >
             {isManualOpen ? (
-              <svg className="w-3.5 h-3.5 fill-current text-zinc-950" viewBox="0 0 24 24">
+              <svg
+                className="w-3.5 h-3.5 fill-current text-zinc-950"
+                viewBox="0 0 24 24"
+              >
                 <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" />
               </svg>
             ) : (
-              <svg className="w-3.5 h-3.5 text-zinc-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <svg
+                className="w-3.5 h-3.5 text-zinc-400"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
               </svg>
             )}
             MANUAL
@@ -188,12 +308,14 @@ const PowerOverloadMediumPage: React.FC = () => {
       </nav>
 
       <main className="max-w-4xl mx-auto px-6 py-12 flex flex-col relative z-10">
-
         {/* INLINE EXPANDABLE HACKING MANUAL CARD */}
         {isManualOpen && (
           <div className="border border-yellow-500 bg-zinc-950/90 rounded-lg p-6 mb-8 max-w-2xl w-full mx-auto font-mono text-[11px] text-zinc-500 border-glow-yellow animate-fadeIn leading-relaxed">
             <div className="flex items-center gap-2 border-b border-zinc-900 pb-3 mb-4">
-              <svg className="w-4 h-4 text-yellow-500 fill-current" viewBox="0 0 24 24">
+              <svg
+                className="w-4 h-4 text-yellow-500 fill-current"
+                viewBox="0 0 24 24"
+              >
                 <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" />
               </svg>
               <h3 className="text-yellow-500 font-bold text-xs tracking-wider uppercase">
@@ -202,7 +324,8 @@ const PowerOverloadMediumPage: React.FC = () => {
             </div>
 
             <p className="text-zinc-400 font-sans mb-4 text-xs">
-              <span className="font-bold text-zinc-200">OBJECTIVE:</span> Reroute power safety by cutting the correct wires.
+              <span className="font-bold text-zinc-200">OBJECTIVE:</span>{" "}
+              Reroute power safety by cutting the correct wires.
             </p>
 
             <div className="space-y-4">
@@ -215,14 +338,39 @@ const PowerOverloadMediumPage: React.FC = () => {
                   {rules.map((rule) => {
                     const isSpecialTip = rule.rule_number === 3;
                     return (
-                      <li key={rule.id} className={isSpecialTip ? "list-none text-yellow-500 font-semibold mt-1" : ""}>
+                      <li
+                        key={rule.id}
+                        className={
+                          isSpecialTip
+                            ? "list-none text-yellow-500 font-semibold mt-1"
+                            : ""
+                        }
+                      >
                         {!isSpecialTip && `Wire ${rule.rule_number}: `}
-                        {isSpecialTip ? `*${rule.description}` : renderRuleText(rule.description)}
+                        {isSpecialTip
+                          ? `*${rule.description}`
+                          : renderRuleText(rule.description)}
                       </li>
                     );
                   })}
                   <li className="list-none text-zinc-500 font-mono text-[9px] mt-2 uppercase leading-normal tracking-wide border-t border-zinc-900 pt-2">
-                    ⚠️ Hex Signatures Legend: GREEN (<span className="text-emerald-500 font-semibold">#00C838</span>), YELLOW (<span className="text-amber-400 font-semibold">#FFBC00</span>), CYAN (<span className="text-cyan-400 font-semibold">#00B4DB</span>), RED (<span className="text-rose-500 font-semibold">#E11D48</span>), PURPLE (<span className="text-purple-500 font-semibold">#9333EA</span>).
+                    ⚠️ Hex Signatures Legend: GREEN (
+                    <span className="text-emerald-500 font-semibold">
+                      #00C838
+                    </span>
+                    ), YELLOW (
+                    <span className="text-amber-400 font-semibold">
+                      #FFBC00
+                    </span>
+                    ), CYAN (
+                    <span className="text-cyan-400 font-semibold">#00B4DB</span>
+                    ), RED (
+                    <span className="text-rose-500 font-semibold">#E11D48</span>
+                    ), PURPLE (
+                    <span className="text-purple-500 font-semibold">
+                      #9333EA
+                    </span>
+                    ).
                   </li>
                 </ul>
               </div>

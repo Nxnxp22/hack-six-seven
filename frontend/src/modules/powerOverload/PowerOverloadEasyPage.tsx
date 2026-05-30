@@ -89,6 +89,14 @@ const PowerOverloadEasyPage: React.FC = () => {
     });
   };
 
+  // Handle Timeout
+  useEffect(() => {
+    if (game && seconds === 0) {
+      alert("CRITICAL OVERLOAD FAILURE: TIME EXPIRED! Stability lost: -10%");
+      navigate("/", { state: { stabilityLost: 10, status: "FAILED", feature: "powerOverload" } });
+    }
+  }, [seconds, game, navigate]);
+
   const handleWireCut = async (wireId: string) => {
     if (!game) return;
     try {
@@ -96,12 +104,13 @@ const PowerOverloadEasyPage: React.FC = () => {
       if (response.success) {
         setGame({ ...game, currentCuts: response.currentCuts });
         if (response.isGameOver) {
-          alert(response.message || "SUCCESSFULLY DEFUSED! Stability restored: +10%");
-          navigate("/", { state: { stabilityGained: 10, status: "SUCCESS", feature: "powerOverload" } });
+          const coinsGained = 10 + Math.floor((seconds / game.timeLimitSeconds) * 30);
+          alert(response.message || `SUCCESSFULLY DEFUSED! Stability restored: +10% | Coins earned: +${coinsGained} 🪙`);
+          navigate("/", { state: { stabilityGained: 10, coinsGained, status: "SUCCESS", feature: "powerOverload" } });
         }
       } else {
-        alert(response.message || "CRITICAL OVERLOAD FAILURE! Stability lost: -15%");
-        navigate("/", { state: { stabilityLost: 15, status: "FAILED", feature: "powerOverload" } });
+        alert(response.message || "CRITICAL OVERLOAD FAILURE! Stability lost: -10%");
+        navigate("/", { state: { stabilityLost: 10, status: "FAILED", feature: "powerOverload" } });
       }
     } catch (error) {
       console.error("Error standardizing wire execution:", error);

@@ -151,6 +151,14 @@ const PowerOverloadHardPage: React.FC = () => {
     });
   };
 
+  // Handle Timeout
+  useEffect(() => {
+    if (game && seconds === 0) {
+      alert("CRITICAL OVERLOAD FAILURE: TIME EXPIRED! Stability lost: -10%");
+      navigate("/", { state: { stabilityLost: 10, status: "FAILED", feature: "powerOverload" } });
+    }
+  }, [seconds, game, navigate]);
+
   const handleWireCut = async (wireId: string) => {
     if (!game) return;
     try {
@@ -158,13 +166,15 @@ const PowerOverloadHardPage: React.FC = () => {
       if (response.success) {
         setGame({ ...game, currentCuts: response.currentCuts });
         if (response.isGameOver) {
+          const coinsGained = 10 + Math.floor((seconds / game.timeLimitSeconds) * 30);
           alert(
             response.message ||
-              "SUCCESSFULLY DEFUSED! Stability restored: +40%",
+              `SUCCESSFULLY DEFUSED! Stability restored: +20% | Coins earned: +${coinsGained} 🪙`,
           );
           navigate("/", {
             state: {
-              stabilityGained: 40,
+              stabilityGained: 20,
+              coinsGained,
               status: "SUCCESS",
               feature: "powerOverload",
             },
@@ -172,11 +182,11 @@ const PowerOverloadHardPage: React.FC = () => {
         }
       } else {
         alert(
-          response.message || "CRITICAL OVERLOAD FAILURE! Stability lost: -15%",
+          response.message || "CRITICAL OVERLOAD FAILURE! Stability lost: -10%",
         );
         navigate("/", {
           state: {
-            stabilityLost: 15,
+            stabilityLost: 10,
             status: "FAILED",
             feature: "powerOverload",
           },

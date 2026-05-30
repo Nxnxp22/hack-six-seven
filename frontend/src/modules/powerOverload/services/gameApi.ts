@@ -33,6 +33,23 @@ export const fetchManualRules = async (difficulty: string): Promise<DBManualRule
   return response.data;
 };
 
+export interface HintResponse {
+  success: boolean;
+  hintText: string;
+  cost: number;
+}
+
+export const fetchHint = async (
+  sessionId: string,
+  hintOrder: number,
+): Promise<HintResponse> => {
+  const response = await axios.post(`${API_URL}/game/hint`, {
+    sessionId,
+    hintOrder,
+  });
+  return response.data;
+};
+
 // ─── decoding_rules CRUD ─────────────────────────────────────────────────────
 
 export const fetchAllRules = async (): Promise<DBManualRule[]> => {

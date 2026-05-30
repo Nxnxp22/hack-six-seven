@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { getRulesFromDB, getCriticalTemplateFromDB } from '../../../db.js';
+import { prisma } from '../../../prisma.js';
 
 interface Wire {
   id: string;
@@ -319,5 +320,67 @@ export const getManual = async (req: Request, res: Response): Promise<void> => {
     res.status(200).json(rules);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Reveals a hint for the current session.
+ * Request body: { sessionId, hintOrder }
+ * Deducts 15 coins for the 1st hint, 20 for the 2nd+ hint.
+ * Reads and writes the coin balance from the DB.
+ */
+export const getHint = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { sessionId, hintOrder } = req.body;
+
+    if (!sessionId || !hintOrder) {
+      res.status(400).json({ success: false, message: 'Missing sessionId or hintOrder.' });
+      return;
+    }
+
+    const session = sessions.get(sessionId);
+    if (!session) {
+      res.status(404).json({ success: false, message: 'Active game session not found.' });
+      return;
+    }
+
+    const cost = hintOrder === 1 ? 15 : 20;
+
+    // Read coin balance from DB
+    const coinRow = await prisma.gameCoins.findFirst();
+    const currentBalance = coinRow?.balance ?? 100;
+
+    if (currentBalance < cost) {
+      res.status(400).json({ success: false, message: 'INSUFFICIENT_COINS', cost, balance: currentBalance });
+      return;
+    }
+
+    // Deduct coins in DB
+    const newBalance = currentBalance - cost;
+    if (coinRow) {
+      await prisma.gameCoins.update({ where: { id: coinRow.id }, data: { balance: newBalance } });
+    } else {
+      await prisma.gameCoins.create({ data: { balance: newBalance } });
+    }
+
+    // Calculate hint text
+    let hintText = '';
+    const nextStepIdx = session.cutHistory.length;
+
+    if (nextStepIdx >= session.totalCutsNeeded) {
+      hintText = 'Defusal already complete. No further hints required.';
+    } else {
+      const correctIdx = session.correctSequence[nextStepIdx];
+      const correctWire = session.wires[correctIdx];
+      if (session.difficulty === 'EASY') {
+        hintText = `DECRYPTION HINT: You need to cut the ${correctWire.color} wire to stabilize the junction.`;
+      } else {
+        hintText = `DECRYPTION HINT: Step ${nextStepIdx + 1} of your defusal sequence requires cutting the ${correctWire.color} wire.`;
+      }
+    }
+
+    res.status(200).json({ success: true, hintText, cost, balance: newBalance });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

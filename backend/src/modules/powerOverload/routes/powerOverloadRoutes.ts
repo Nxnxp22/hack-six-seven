@@ -1,5 +1,5 @@
 import express from 'express';
-import { getNewGame, checkWire, getManual } from '../controllers/powerOverloadController.js';
+import { getNewGame, checkWire, getManual, getHint } from '../controllers/powerOverloadController.js';
 import {
   listAllRules,
   listRulesByDifficulty,
@@ -23,6 +23,7 @@ const router = express.Router();
 router.post('/start', getNewGame);
 router.post('/cut', checkWire);
 router.post('/cut-wire', checkWire);
+router.post('/hint', getHint);
 
 /** GET /api/game/manual?difficulty=EASY — rules by difficulty (game UI) */
 router.get('/manual', getManual);

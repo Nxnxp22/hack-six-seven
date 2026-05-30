@@ -23,3 +23,19 @@ model CriticalTemplate {
 
   @@map("critical_templates")
 }
+
+model ModuleStability {
+  id             Int      @id @default(autoincrement())
+  moduleId       String   @unique  // e.g. "powerOverload"
+  startedAt      DateTime @default(now())
+  bonusStability Int      @default(0)
+
+  @@map("module_stability")
+}
+
+model GameCoins {
+  id      Int @id @default(autoincrement())
+  balance Int @default(100)
+
+  @@map("game_coins")
+}
