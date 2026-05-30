@@ -26,6 +26,13 @@ function formatTime(s: number): string {
   return `${m}:${String(s % 60).padStart(2, '0')}`
 }
 
+function difficultyColor(difficulty: string | undefined): string {
+  if (difficulty === 'EASY')   return 'text-green-400'
+  if (difficulty === 'MEDIUM') return 'text-amber-400'
+  if (difficulty === 'HARD')   return 'text-red-400'
+  return 'text-white'
+}
+
 
 export default function SecurityLockdownPage() {
   const navigate = useNavigate()
@@ -303,6 +310,11 @@ export default function SecurityLockdownPage() {
           valueClass={`${timerColor}${timerUrgent ? ' animate-pulse' : ''}`}
         />
         <GameNavbarStat label="COINS" value={gameState?.coins ?? '—'} valueClass="text-amber-400" />
+        <GameNavbarStat
+          label="LEVEL"
+          value={puzzle?.difficulty ?? '—'}
+          valueClass={difficultyColor(puzzle?.difficulty)}
+        />
       </GameNavbar>
 
       {/* ── Stability bars ──────────────────────────────────────────── */}
