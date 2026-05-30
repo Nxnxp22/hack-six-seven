@@ -1,35 +1,50 @@
 import { MORSE_MAP } from "../lib/morse";
 
-export default function MorseReference() {
+function MorseBar({ code }: { code: string }) {
   return (
-    <div
-      className="mt-4 p-4 rounded-sm"
-      style={{ background: "rgba(0,20,30,0.9)", border: "1px solid #0e4f6b" }}
-    >
-      <p
-        className="text-xs tracking-widest mb-3"
-        style={{ color: "#00bcd4", letterSpacing: "3px" }}
-      >
+    <div className="flex items-center gap-[3px]">
+      {code.split("").map((sym, i) =>
+        sym === "." ? (
+          <span
+            key={i}
+            className="inline-block rounded-full bg-cyan-400"
+            style={{ width: 6, height: 6 }}
+          />
+        ) : (
+          <span
+            key={i}
+            className="inline-block rounded-sm bg-cyan-400"
+            style={{ width: 18, height: 6 }}
+          />
+        )
+      )}
+    </div>
+  );
+}
+
+export default function MorseReference() {
+  const entries = Object.entries(MORSE_MAP);
+
+  return (
+    <div>
+      <p className="text-cyan-400 text-[10px] tracking-[0.4em] mb-5">
         MORSE CODE REFERENCE
       </p>
-      <div className="grid grid-cols-6 gap-1">
-        {Object.entries(MORSE_MAP).map(([char, code]) => (
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-2">
+        {entries.map(([char, code]) => (
           <div
             key={char}
-            className="text-center py-1 px-1"
-            style={{ border: "1px solid #0e2a35" }}
+            className="flex items-center gap-3 px-3 py-2 rounded-lg border border-white/10 bg-white/[0.03] hover:border-cyan-500/40 hover:bg-cyan-950/20 transition-colors"
           >
-            <div
-              className="font-bold text-sm"
-              style={{ color: "#00bcd4" }}
-            >
+            <span className="text-cyan-300 font-bold text-base w-4 shrink-0 font-mono">
               {char}
-            </div>
-            <div
-              className="text-xs tracking-widest"
-              style={{ color: "#2a6070", fontSize: "10px" }}
-            >
-              {code}
+            </span>
+
+            <span className="w-px h-4 bg-white/10 shrink-0" />
+
+            <div className="flex flex-1 justify-center">
+              <MorseBar code={code} />
             </div>
           </div>
         ))}
