@@ -381,14 +381,14 @@ const MainDashboard: React.FC = () => {
                   </div>
 
                   {/* Status badge */}
-                  {!mod.implemented && (
+                  {/* {!mod.implemented && (
                     <span
                       className="text-[8px] font-bold tracking-widest px-2 py-0.5 rounded border uppercase"
                       style={{ borderColor: `${mod.accentHex}55`, color: mod.accentHex }}
                     >
                       ROUTE PENDING
                     </span>
-                  )}
+                  )} */}
                   {isCritical && (
                     <span className="text-[8px] font-bold tracking-widest px-2 py-0.5 rounded border border-red-500/60 text-red-400 uppercase stability-critical-blink">
                       CRITICAL

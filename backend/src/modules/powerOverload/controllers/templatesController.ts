@@ -6,7 +6,7 @@ import {
   updateCriticalTemplateInDB,
   deleteCriticalTemplateFromDB,
   getCriticalTemplateByDifficultyFromDB,
-} from '../db.js';
+} from '../../../db.js';
 
 const VALID_DIFFICULTIES = ['EASY', 'MEDIUM', 'HARD'] as const;
 

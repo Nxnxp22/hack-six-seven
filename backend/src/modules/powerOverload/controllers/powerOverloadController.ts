@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { getRulesFromDB, getCriticalTemplateFromDB } from '../db.js';
+import { getRulesFromDB, getCriticalTemplateFromDB } from '../../../db.js';
 
 interface Wire {
   id: string;
@@ -21,6 +21,21 @@ interface GameSession {
 
 // In-memory active game sessions cache
 const sessions = new Map<string, GameSession>();
+
+const generateRandomWires = (count: number): Wire[] => {
+  const colorPool = ['GREEN', 'YELLOW', 'CYAN', 'RED', 'BLUE', 'ORANGE', 'PURPLE'];
+  const shuffled = [...colorPool].sort(() => Math.random() - 0.5);
+  const selectedColors = shuffled.slice(0, count);
+  // Sort the selected colors to match the order: GREEN, YELLOW, CYAN, RED, BLUE, ORANGE, PURPLE
+  selectedColors.sort((a, b) => colorPool.indexOf(a) - colorPool.indexOf(b));
+  
+  return selectedColors.map((color, index) => ({
+    id: `w${index + 1}`,
+    color,
+    label: color,
+    isCut: false
+  }));
+};
 
 // Solve function matching rulebook logic
 const solveGrid = (wireList: Wire[], diff: string): number[] => {

@@ -1,5 +1,5 @@
 import express from 'express';
-import powerOverloadRouter from './routes/powerOverloadRoutes.js';
+import powerOverloadRouter from './modules/powerOverload/routes/powerOverloadRoutes.js';
 
 const router = express.Router();
 

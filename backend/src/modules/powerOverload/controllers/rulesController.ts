@@ -6,7 +6,7 @@ import {
   createRuleInDB,
   updateRuleInDB,
   deleteRuleFromDB,
-} from '../db.js';
+} from '../../../db.js';
 
 const VALID_DIFFICULTIES = ['EASY', 'MEDIUM', 'HARD'] as const;
 
