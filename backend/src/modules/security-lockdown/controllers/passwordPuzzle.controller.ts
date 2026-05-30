@@ -71,6 +71,15 @@ export async function getAll(_req: Request, res: Response, next: NextFunction) {
   }
 }
 
+// GET /api/password-puzzle/:id/public  — safe for frontend, never exposes answer
+export async function getPublic(req: Request, res: Response, next: NextFunction) {
+  try {
+    res.json(await service.getPuzzlePublic(req.params.id as string))
+  } catch (err) {
+    next(err)
+  }
+}
+
 // GET /api/password-puzzle/:id
 export async function getById(req: Request, res: Response, next: NextFunction) {
   try {

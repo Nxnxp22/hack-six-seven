@@ -183,6 +183,27 @@ export async function getAllPuzzles() {
   })
 }
 
+export async function getPuzzlePublic(id: string): Promise<PuzzlePublicDTO> {
+  const puzzle = await prisma.passwordPuzzle.findUnique({
+    where: { id },
+    include: {
+      hints: {
+        select: { id: true, order: true, coinCost: true },
+        orderBy: { order: 'asc' },
+      },
+    },
+  })
+  if (!puzzle) throw new AppError('Puzzle not found', 404)
+  return {
+    id:         puzzle.id,
+    title:      puzzle.title,
+    difficulty: puzzle.difficulty as Difficulty,
+    clueText:   puzzle.clueText,
+    timeLimit:  puzzle.timeLimit,
+    hints:      puzzle.hints,
+  }
+}
+
 export async function getPuzzleById(id: string) {
   const puzzle = await prisma.passwordPuzzle.findUnique({
     where: { id },

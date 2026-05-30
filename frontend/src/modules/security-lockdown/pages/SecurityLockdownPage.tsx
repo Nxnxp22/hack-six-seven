@@ -8,6 +8,16 @@ import ManualPanel from '../components/ManualPanel'
 import MissionResultPopup from '../components/MissionResultPopup'
 
 const MAX_TRIES = 4
+const SESSION_KEY = 'sl_active_session'
+
+interface ActiveSession {
+  puzzleId: string
+  startTimestamp: number
+  hintsUsed: number
+  coinsSpentHints: number
+  revealedHints: Record<string, string>
+  triesLeft: number
+}
 
 function formatTime(s: number): string {
   const m = Math.floor(s / 60)
@@ -47,9 +57,10 @@ export default function SecurityLockdownPage() {
   const [timeRemaining, setTimeRemaining]     = useState(0)
   const [wrongFeedback, setWrongFeedback]     = useState<string | null>(null)
 
-  const startTimeRef     = useRef<number>(Date.now())
-  const timerRef         = useRef<ReturnType<typeof setInterval> | null>(null)
-  const handleTimeoutRef = useRef<() => void>(() => {})
+  const startTimeRef        = useRef<number>(Date.now())
+  const timerRef            = useRef<ReturnType<typeof setInterval> | null>(null)
+  const handleTimeoutRef    = useRef<() => void>(() => {})
+  const timedOutOnRestoreRef = useRef(false)
 
   function clearTimer() {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
@@ -66,12 +77,59 @@ export default function SecurityLockdownPage() {
     }, 1000)
   }
 
+  // On mount: try to restore an existing session before fetching a new puzzle
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { loadPuzzle(); return () => clearTimer() }, [])
-  useEffect(() => { if (result) clearTimer() }, [result])
+  useEffect(() => { void loadPuzzle(false); return () => clearTimer() }, [])
 
-  async function loadPuzzle() {
+  // Persist session state to localStorage whenever it changes mid-game
+  useEffect(() => {
+    if (!puzzle || result) return
+    const session: ActiveSession = {
+      puzzleId:       puzzle.id,
+      startTimestamp: startTimeRef.current,
+      hintsUsed,
+      coinsSpentHints,
+      revealedHints,
+      triesLeft,
+    }
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session))
+  }, [puzzle, hintsUsed, coinsSpentHints, revealedHints, triesLeft, result])
+
+  // Clear session and timer once the game has a result
+  useEffect(() => {
+    if (result) {
+      clearTimer()
+      localStorage.removeItem(SESSION_KEY)
+    }
+  }, [result])
+
+  // If the puzzle timed out while the page was closed/refreshed, fire timeout after puzzle state is set
+  useEffect(() => {
+    if (puzzle && timedOutOnRestoreRef.current) {
+      timedOutOnRestoreRef.current = false
+      void handleTimeout()
+    }
+  // handleTimeout is stable within a render; puzzle identity triggers this
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [puzzle])
+
+  async function loadPuzzle(forceNew: boolean) {
     clearTimer()
+
+    if (!forceNew) {
+      const raw = localStorage.getItem(SESSION_KEY)
+      if (raw) {
+        try {
+          const session = JSON.parse(raw) as ActiveSession
+          await restoreSession(session)
+          return
+        } catch {
+          localStorage.removeItem(SESSION_KEY)
+        }
+      }
+    }
+
+    localStorage.removeItem(SESSION_KEY)
     setLoading(true)
     setPageError(null)
     setResult(null)
@@ -93,6 +151,44 @@ export default function SecurityLockdownPage() {
       startTimer(puzzleData.timeLimit)
     } catch {
       setPageError('Backend unreachable. Make sure the server is running on port 3000.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function restoreSession(session: ActiveSession) {
+    setLoading(true)
+    setPageError(null)
+    setResult(null)
+    setAnswer('')
+    setHintError(null)
+    setWrongFeedback(null)
+    try {
+      const [stateData, puzzleData] = await Promise.all([
+        service.fetchGameState(),
+        service.fetchPuzzleById(session.puzzleId),
+      ])
+      setGameState(stateData)
+      setHintsUsed(session.hintsUsed)
+      setCoinsSpentHints(session.coinsSpentHints)
+      setRevealedHints(session.revealedHints)
+      setTriesLeft(session.triesLeft)
+      startTimeRef.current = session.startTimestamp
+
+      const elapsed    = Math.floor((Date.now() - session.startTimestamp) / 1000)
+      const remaining  = Math.max(0, puzzleData.timeLimit - elapsed)
+      setPuzzle(puzzleData)
+
+      if (remaining === 0) {
+        // Timer expired while the page was away — useEffect on puzzle will fire the timeout
+        timedOutOnRestoreRef.current = true
+      } else {
+        startTimer(remaining)
+      }
+    } catch {
+      // Puzzle no longer exists or backend unavailable — start fresh
+      localStorage.removeItem(SESSION_KEY)
+      await loadPuzzle(true)
     } finally {
       setLoading(false)
     }
@@ -288,7 +384,7 @@ export default function SecurityLockdownPage() {
                 maxTries={MAX_TRIES}
                 totalHints={totalHints}
                 hintsRevealed={hintsRevealed}
-                onPlayAgain={loadPuzzle}
+                onPlayAgain={() => { void loadPuzzle(true) }}
               />
             </div>
 

@@ -18,6 +18,11 @@ export async function fetchRandomPuzzle(): Promise<PuzzlePublicDTO> {
   return data
 }
 
+export async function fetchPuzzleById(id: string): Promise<PuzzlePublicDTO> {
+  const { data } = await api.get<PuzzlePublicDTO>(`/password-puzzle/${id}/public`)
+  return data
+}
+
 export async function revealHint(puzzleId: string, hintId: string): Promise<RevealHintResponseDTO> {
   const { data } = await api.post<RevealHintResponseDTO>('/password-puzzle/hint', { puzzleId, hintId })
   return data
