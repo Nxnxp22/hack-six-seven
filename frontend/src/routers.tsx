@@ -1,8 +1,8 @@
-import { createHashRouter } from 'react-router-dom';
+import { createBrowserRouter } from 'react-router-dom';
 import MainDashboard from './modules/MainDashboard';
 import PowerOverloadPage from './modules/powerOverload/PowerOverloadPage';
 
-export const router = createHashRouter([
+export const router = createBrowserRouter([
   {
     path: '/',
     element: <MainDashboard />,

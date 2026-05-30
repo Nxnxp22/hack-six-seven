@@ -4,11 +4,11 @@ import cookieParser from 'cookie-parser';
 import apiRouter from './routers.js';
 
 const app = express();
-const PORT = process.env.PORT || 5050;
+const PORT = process.env.PORT;
 
 // Enable CORS from Vite frontend
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+  origin: ['http://localhost:5173'],
   credentials: true
 }));
 
@@ -25,9 +25,5 @@ app.get('/health', (req, res) => {
 
 // Start Express server
 app.listen(PORT, () => {
-  console.log(`========================================`);
-  console.log(`  NEXUS CORE SYSTEM BACKEND ACTIVE      `);
-  console.log(`  Listening on Port: ${PORT}            `);
-  console.log(`  Health Check: http://localhost:${PORT}/health`);
-  console.log(`========================================`);
+  console.log(`  [server]: Server is running at http://localhost:${PORT}`);
 });
