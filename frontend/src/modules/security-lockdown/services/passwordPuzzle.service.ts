@@ -1,24 +1,25 @@
 import { api } from '../../../api'
 import type {
-  Difficulty,
+  GameStateDTO,
   PuzzlePublicDTO,
   RevealHintResponseDTO,
   SubmitRequestDTO,
   SubmitResponseDTO,
 } from '../types/passwordPuzzle.types'
 
-export async function fetchRandomPuzzle(difficulty: Difficulty): Promise<PuzzlePublicDTO> {
-  const { data } = await api.get<PuzzlePublicDTO>('/password-puzzle/random', {
-    params: { difficulty },
-  })
+export async function fetchGameState(): Promise<GameStateDTO> {
+  const { data } = await api.get<GameStateDTO>('/password-puzzle/stability')
+  return data
+}
+
+// Difficulty is now chosen by the server — do not pass it from the frontend
+export async function fetchRandomPuzzle(): Promise<PuzzlePublicDTO> {
+  const { data } = await api.get<PuzzlePublicDTO>('/password-puzzle/random')
   return data
 }
 
 export async function revealHint(puzzleId: string, hintId: string): Promise<RevealHintResponseDTO> {
-  const { data } = await api.post<RevealHintResponseDTO>('/password-puzzle/hint', {
-    puzzleId,
-    hintId,
-  })
+  const { data } = await api.post<RevealHintResponseDTO>('/password-puzzle/hint', { puzzleId, hintId })
   return data
 }
 
