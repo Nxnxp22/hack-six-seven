@@ -23,6 +23,16 @@ export async function fetchPuzzleById(id: string): Promise<PuzzlePublicDTO> {
   return data
 }
 
+export async function fetchModuleStability(): Promise<{ modules: { moduleId: string; stability: number }[] }> {
+  const { data } = await api.get('/stability')
+  return data
+}
+
+export async function applyModuleStabilityDelta(moduleId: string, delta: number): Promise<{ moduleId: string; stability: number }> {
+  const { data } = await api.post('/stability/apply', { moduleId, delta })
+  return data
+}
+
 export async function revealHint(puzzleId: string, hintId: string): Promise<RevealHintResponseDTO> {
   const { data } = await api.post<RevealHintResponseDTO>('/password-puzzle/hint', { puzzleId, hintId })
   return data

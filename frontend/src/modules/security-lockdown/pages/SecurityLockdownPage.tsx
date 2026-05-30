@@ -5,7 +5,7 @@ import * as service from '../services/passwordPuzzle.service'
 import ClassifiedDocument from '../components/ClassifiedDocument'
 import PasswordInput from '../components/PasswordInput'
 import ManualPanel from '../components/ManualPanel'
-import MissionResultPopup from '../components/MissionResultPopup'
+import MissionResultPopup from '../../../components/MissionResultPopup'
 import GameNavbar, { GameNavbarStat } from '../../../components/GameNavbar'
 import StabilityBar from '../../../components/StabilityBar'
 
@@ -52,6 +52,7 @@ export default function SecurityLockdownPage() {
   const [triesLeft, setTriesLeft]             = useState(MAX_TRIES)
   const [timeRemaining, setTimeRemaining]     = useState(0)
   const [wrongFeedback, setWrongFeedback]     = useState<string | null>(null)
+  const [moduleStabilities, setModuleStabilities] = useState<{ moduleId: string; stability: number }[]>([])
 
   const startTimeRef        = useRef<number>(Date.now())
   const timerRef            = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -138,8 +139,12 @@ export default function SecurityLockdownPage() {
     setWrongFeedback(null)
     startTimeRef.current = Date.now()
     try {
-      const stateData = await service.fetchGameState()
+      const [stateData, stabilityData] = await Promise.all([
+        service.fetchGameState(),
+        service.fetchModuleStability(),
+      ])
       setGameState(stateData)
+      setModuleStabilities(stabilityData.modules)
       const puzzleData = await service.fetchRandomPuzzle()
       setPuzzle(puzzleData)
       startTimer(puzzleData.timeLimit)
@@ -163,11 +168,13 @@ export default function SecurityLockdownPage() {
     setHintError(null)
     setWrongFeedback(null)
     try {
-      const [stateData, puzzleData] = await Promise.all([
+      const [stateData, puzzleData, stabilityData] = await Promise.all([
         service.fetchGameState(),
         service.fetchPuzzleById(session.puzzleId),
+        service.fetchModuleStability(),
       ])
       setGameState(stateData)
+      setModuleStabilities(stabilityData.modules)
       setHintsUsed(session.hintsUsed)
       setCoinsSpentHints(session.coinsSpentHints)
       setRevealedHints(session.revealedHints)
@@ -179,8 +186,9 @@ export default function SecurityLockdownPage() {
       setPuzzle(puzzleData)
 
       if (remaining === 0) {
-        // Timer expired while the page was away — useEffect on puzzle will fire the timeout
-        timedOutOnRestoreRef.current = true
+        // Session expired while away — start fresh rather than immediately failing
+        localStorage.removeItem(SESSION_KEY)
+        await loadPuzzle(true)
       } else {
         startTimer(remaining)
       }
@@ -214,12 +222,11 @@ export default function SecurityLockdownPage() {
     const timeTaken = Math.floor((Date.now() - startTimeRef.current) / 1000)
     try {
       const res = await service.submitAnswer({ puzzleId: puzzle.id, answer: answer.trim(), timeTaken, hintsUsed, coinsSpentHints })
-      setGameState((prev) => prev ? {
-        ...prev,
-        securityStability: res.securityStability,
-        globalStability: res.globalStability,
-        coins: res.currentCoins,
-      } : prev)
+      setGameState((prev) => prev ? { ...prev, coins: res.currentCoins } : prev)
+      try {
+        const updated = await service.applyModuleStabilityDelta('securityLockdown', res.stabilityChange)
+        setModuleStabilities(prev => prev.map(m => (m.moduleId === 'securityLockdown' ? updated : m)))
+      } catch { /* non-critical */ }
       if (res.correct) {
         setResult(res)
       } else {
@@ -245,7 +252,11 @@ export default function SecurityLockdownPage() {
     try {
       const res = await service.submitAnswer({ puzzleId: puzzle.id, answer: '', timeTaken: puzzle.timeLimit, hintsUsed, coinsSpentHints, timedOut: true })
       setResult(res)
-      setGameState((prev) => prev ? { ...prev, securityStability: res.securityStability, globalStability: res.globalStability, coins: res.currentCoins } : prev)
+      setGameState((prev) => prev ? { ...prev, coins: res.currentCoins } : prev)
+      try {
+        const updated = await service.applyModuleStabilityDelta('securityLockdown', res.stabilityChange)
+        setModuleStabilities(prev => prev.map(m => (m.moduleId === 'securityLockdown' ? updated : m)))
+      } catch { /* non-critical */ }
     } catch {
       setPageError('Submission failed.')
     } finally {
@@ -261,8 +272,10 @@ export default function SecurityLockdownPage() {
   if (timerUrgent) timerColor = 'text-red-400'
   else if (timerWarning) timerColor = 'text-amber-400'
 
-  const sec  = gameState?.securityStability ?? 100
-  const glob = gameState?.globalStability   ?? 100
+  const sec  = moduleStabilities.find(m => m.moduleId === 'securityLockdown')?.stability ?? 100
+  const glob = moduleStabilities.length > 0
+    ? Math.round(moduleStabilities.reduce((s, m) => s + m.stability, 0) / moduleStabilities.length)
+    : 100
   const secBarColor  = sec  > 60 ? 'bg-emerald-500' : sec  > 30 ? 'bg-amber-500' : 'bg-red-500'
   const globBarColor = glob > 60 ? 'bg-emerald-500' : glob > 30 ? 'bg-amber-500' : 'bg-red-500'
 
@@ -283,10 +296,18 @@ export default function SecurityLockdownPage() {
       {/* ── Mission result popup ─────────────────────────────────────── */}
       {result && puzzle && (
         <MissionResultPopup
-          result={result}
-          puzzleTitle={puzzle.title}
+          success={result.correct}
+          title={puzzle.title}
+          stabilityChange={result.stabilityChange}
+          coinsChange={result.coinsChange}
+          timeTaken={result.timeTaken}
           timeLimit={puzzle.timeLimit}
-          onReturn={() => navigate('/')}
+          accentColor="purple"
+          onReturn={() => navigate('/', {
+            state: result.correct
+              ? { stabilityGained: result.stabilityChange, coinsGained: result.coinsChange, feature: 'securityLockdown' }
+              : { stabilityLost: Math.abs(result.stabilityChange), feature: 'securityLockdown' },
+          })}
         />
       )}
 
