@@ -1,13 +1,36 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
+  
+}
+
+model MorseChallenge {
+  id         String   @id @default(uuid())
+  word       String
+  category   String   @default("general")
+  difficulty String   @default("easy")
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+}
+
+model PlayerSession {
+  id         String   @id @default(uuid())
+  playerName String
+  stability  Int      @default(0)
+  startedAt  DateTime @default(now())
+  scores     Score[]
+}
+
+model Score {
+  id        String        @id @default(uuid())
+  sessionId String
+  session   PlayerSession @relation(fields: [sessionId], references: [id])
+  word      String
+  correct   Boolean
+  timeTaken Int
+  round     Int
+  createdAt DateTime      @default(now())
 }
