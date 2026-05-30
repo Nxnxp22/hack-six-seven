@@ -18,6 +18,7 @@ interface GameSession {
   cutHistory: number[];
   totalCutsNeeded: number;
   timeLimitSeconds: number;
+  hintsPurchasedCount: number;
 }
 
 // In-memory active game sessions cache
@@ -218,13 +219,25 @@ export const getNewGame = async (req: Request, res: Response): Promise<void> => 
     if (diff === 'EASY') {
       correctSequence = [Math.floor(Math.random() * 3)];
     } else if (diff === 'MEDIUM') {
-      const indices = [0, 1, 2, 3, 4];
-      const shuffled = indices.sort(() => Math.random() - 0.5);
-      correctSequence = [shuffled[0], shuffled[1]];
+      const pool = [0, 1, 2, 3, 4];
+      const selected: number[] = [];
+      while (selected.length < 2) {
+        const randIdx = pool[Math.floor(Math.random() * pool.length)];
+        if (!selected.includes(randIdx)) {
+          selected.push(randIdx);
+        }
+      }
+      correctSequence = selected;
     } else {
-      const indices = [0, 1, 2, 3, 4];
-      const shuffled = indices.sort(() => Math.random() - 0.5);
-      correctSequence = [shuffled[0], shuffled[1], shuffled[2]];
+      const pool = [0, 1, 2, 3, 4];
+      const selected: number[] = [];
+      while (selected.length < 3) {
+        const randIdx = pool[Math.floor(Math.random() * pool.length)];
+        if (!selected.includes(randIdx)) {
+          selected.push(randIdx);
+        }
+      }
+      correctSequence = selected;
     }
 
     const session: GameSession = {
@@ -236,6 +249,7 @@ export const getNewGame = async (req: Request, res: Response): Promise<void> => 
       cutHistory: [],
       totalCutsNeeded: neededCuts,
       timeLimitSeconds: timeLimit,
+      hintsPurchasedCount: 0,
     };
 
     sessions.set(sessionId, session);
@@ -405,6 +419,13 @@ export const getHint = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Enforce difficulty-specific hint limits: Easy = 1, Medium = 2, Hard = 3
+    const maxAllowed = session.difficulty === 'EASY' ? 1 : session.difficulty === 'MEDIUM' ? 2 : 3;
+    if ((session.hintsPurchasedCount ?? 0) >= maxAllowed) {
+      res.status(400).json({ success: false, message: 'HINT_LIMIT_REACHED' });
+      return;
+    }
+
     const cost = hintOrder === 1 ? 15 : 20;
 
     // Read coin balance from DB
@@ -424,6 +445,9 @@ export const getHint = async (req: Request, res: Response): Promise<void> => {
       await prisma.gameCoins.create({ data: { balance: newBalance } });
     }
 
+    // Increment hint purchased count
+    session.hintsPurchasedCount = (session.hintsPurchasedCount ?? 0) + 1;
+
     // Calculate hint text
     let hintText = '';
     const nextStepIdx = session.cutHistory.length;
@@ -433,10 +457,31 @@ export const getHint = async (req: Request, res: Response): Promise<void> => {
     } else {
       const correctIdx = session.correctSequence[nextStepIdx];
       const correctWire = session.wires[correctIdx];
-      if (session.difficulty === 'EASY') {
-        hintText = `DECRYPTION HINT: You need to cut the ${correctWire.color} wire to stabilize the junction.`;
+
+      if (hintOrder === 1) {
+        // Hint 1: cryptic/50-50 choice
+        // Find all other wires in the junction box that have a different color than the correct wire
+        const otherWires = session.wires.filter(w => w.color !== correctWire.color);
+        // If there are no other wires (fallback), just fallback to correct wire
+        const incorrectColor = otherWires.length > 0 
+          ? otherWires[Math.floor(Math.random() * otherWires.length)].color 
+          : 'GREEN';
+        
+        // Randomly shuffle the display order of the two colors so correct isn't always first
+        const choices = [correctWire.color, incorrectColor].sort(() => Math.random() - 0.5);
+
+        if (session.difficulty === 'EASY') {
+          hintText = `DECRYPTION HINT (HINT 1): The target wire to stabilize the junction is either ${choices[0]} or ${choices[1]}.`;
+        } else {
+          hintText = `DECRYPTION HINT (HINT 1): Step ${nextStepIdx + 1} of your defusal sequence requires cutting either the ${choices[0]} or the ${choices[1]} wire.`;
+        }
       } else {
-        hintText = `DECRYPTION HINT: Step ${nextStepIdx + 1} of your defusal sequence requires cutting the ${correctWire.color} wire.`;
+        // Hint 2+: direct solution (easier than Hint 1)
+        if (session.difficulty === 'EASY') {
+          hintText = `DIRECT SOLUTION (HINT 2): Sever the ${correctWire.color} wire immediately.`;
+        } else {
+          hintText = `DIRECT SOLUTION (HINT 2): Step ${nextStepIdx + 1} of your defusal sequence requires cutting the ${correctWire.color} wire.`;
+        }
       }
     }
 

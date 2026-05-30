@@ -180,7 +180,8 @@ const PowerOverloadHardPage: React.FC = () => {
     try {
       const response = await cutWire(game.sessionId, wireId);
       if (response.success) {
-        setGame({ ...game, currentCuts: response.currentCuts });
+        const updatedWires = game.wires.map(w => w.id === wireId ? { ...w, isCut: true } : w);
+        setGame({ ...game, currentCuts: response.currentCuts, wires: updatedWires });
         if (response.isGameOver) {
           sessionStorage.removeItem("active_game_session_id");
           sessionStorage.removeItem("active_game_difficulty");
@@ -219,6 +220,10 @@ const PowerOverloadHardPage: React.FC = () => {
 
   const handleBuyHint = async () => {
     if (!game) return;
+    if (hintCount >= 3) {
+      alert("HINT LIMIT REACHED! You can only use up to 3 hints on Hard difficulty.");
+      return;
+    }
     const nextHintOrder = hintCount + 1;
     const cost = nextHintOrder === 1 ? 15 : 20;
 
@@ -351,13 +356,18 @@ const PowerOverloadHardPage: React.FC = () => {
           
           {/* Hint Button */}
           <button
+            disabled={hintCount >= 3}
             onClick={handleBuyHint}
-            className={`flex items-center gap-2 border px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer text-yellow-500 border-yellow-800/80 hover:text-yellow-400 hover:border-yellow-500/70 hover:shadow-[0_0_12px_rgba(234,179,8,0.3)]`}
+            className={`flex items-center gap-2 border px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider transition-all duration-200
+              ${hintCount >= 3
+                ? "border-zinc-800 text-zinc-600 bg-zinc-950 cursor-not-allowed opacity-50"
+                : "text-yellow-500 border-yellow-800/80 hover:text-yellow-400 hover:border-yellow-500/70 hover:shadow-[0_0_12px_rgba(234,179,8,0.3)] cursor-pointer"
+              }`}
           >
-            <svg className="w-3.5 h-3.5 fill-current text-yellow-500" viewBox="0 0 24 24">
+            <svg className={`w-3.5 h-3.5 fill-current ${hintCount >= 3 ? "text-zinc-600" : "text-yellow-500"}`} viewBox="0 0 24 24">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 16h-2v-2h2v2zm0-4h-2V7h2v7z" />
             </svg>
-            HINT ({hintCount === 0 ? 15 : 20} 🪙)
+            {hintCount >= 3 ? "HINT EXHAUSTED" : `HINT (${hintCount === 0 ? 15 : 20} 🪙)`}
           </button>
         </div>
 
@@ -465,18 +475,6 @@ const PowerOverloadHardPage: React.FC = () => {
           </div>
         )}
 
-        {/* Warning card alert */}
-        <div className="border border-yellow-500 bg-yellow-500/5 rounded-lg p-5 mb-12 flex items-center gap-4 max-w-2xl w-full mx-auto border-glow-yellow">
-          <div className="w-6 h-6 rounded border-2 border-yellow-500 flex items-center justify-center text-yellow-500 font-black text-sm shrink-0 text-glow-yellow animate-pulse">
-            !
-          </div>
-          <div className="w-full text-center pr-6">
-            <span className="text-yellow-500 font-bold text-sm tracking-widest uppercase font-mono text-glow-yellow flex items-center justify-center flex-wrap">
-              {renderInstruction(game.instruction)}
-            </span>
-          </div>
-        </div>
-
         {/* ACTIVE HINT CARD */}
         {activeHint && (
           <div className="border border-yellow-500/50 bg-yellow-950/20 rounded-lg p-5 mb-12 flex items-center gap-4 max-w-2xl w-full mx-auto border-glow-yellow animate-fadeIn">
@@ -490,6 +488,18 @@ const PowerOverloadHardPage: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Warning card alert */}
+        <div className="border border-yellow-500 bg-yellow-500/5 rounded-lg p-5 mb-12 flex items-center gap-4 max-w-2xl w-full mx-auto border-glow-yellow">
+          <div className="w-6 h-6 rounded border-2 border-yellow-500 flex items-center justify-center text-yellow-500 font-black text-sm shrink-0 text-glow-yellow animate-pulse">
+            !
+          </div>
+          <div className="w-full text-center pr-6">
+            <span className="text-yellow-500 font-bold text-sm tracking-widest uppercase font-mono text-glow-yellow flex items-center justify-center flex-wrap">
+              {renderInstruction(game.instruction)}
+            </span>
+          </div>
+        </div>
 
         {/* Junction Box Card */}
         <div className="border border-zinc-900 bg-zinc-950/40 rounded-xl p-8 max-w-lg w-full mx-auto shadow-2xl relative">
@@ -506,18 +516,24 @@ const PowerOverloadHardPage: React.FC = () => {
             {game.wires.map((wire) => (
               <button
                 key={wire.id}
+                disabled={wire.isCut}
                 onClick={() => handleWireCut(wire.id)}
-                className={`w-full py-4 px-6 rounded font-black text-xs text-left uppercase tracking-[0.15em] transition-all transform active:scale-[0.98] cursor-pointer hover:brightness-110 shadow-lg
-                  ${wire.color === "GREEN" ? "bg-[#00c838] text-white shadow-emerald-500/10 hover:bg-[#00b430]" : ""}
-                  ${wire.color === "YELLOW" ? "bg-[#ffbc00] text-white shadow-amber-400/10 hover:bg-[#eab000]" : ""}
-                  ${wire.color === "CYAN" ? "bg-[#00b4db] text-white shadow-cyan-500/10 hover:bg-[#00a3c6]" : ""}
-                  ${wire.color === "RED" ? "bg-[#e11d48] text-white shadow-rose-600/10 hover:bg-[#f43f5e]" : ""}
-                  ${wire.color === "BLUE" ? "bg-[#2563eb] text-white shadow-blue-600/10 hover:bg-[#3b82f6]" : ""}
-                  ${wire.color === "ORANGE" ? "bg-[#f97316] text-white shadow-orange-500/10 hover:bg-[#fb923c]" : ""}
-                  ${wire.color === "PURPLE" ? "bg-[#9333ea] text-white shadow-purple-600/10 hover:bg-[#a855f7]" : ""}
+                className={`w-full py-4 px-6 rounded font-black text-xs text-left uppercase tracking-[0.15em] transition-all transform
+                  ${wire.isCut 
+                    ? "bg-zinc-900/40 text-zinc-600 border border-zinc-900 line-through opacity-45 cursor-not-allowed pointer-events-none" 
+                    : `cursor-pointer hover:brightness-110 active:scale-[0.98] shadow-lg
+                       ${wire.color === "GREEN" ? "bg-[#00c838] text-white shadow-emerald-500/10 hover:bg-[#00b430]" : ""}
+                       ${wire.color === "YELLOW" ? "bg-[#ffbc00] text-white shadow-amber-400/10 hover:bg-[#eab000]" : ""}
+                       ${wire.color === "CYAN" ? "bg-[#00b4db] text-white shadow-cyan-500/10 hover:bg-[#00a3c6]" : ""}
+                       ${wire.color === "RED" ? "bg-[#e11d48] text-white shadow-rose-600/10 hover:bg-[#f43f5e]" : ""}
+                       ${wire.color === "BLUE" ? "bg-[#2563eb] text-white shadow-blue-600/10 hover:bg-[#3b82f6]" : ""}
+                       ${wire.color === "ORANGE" ? "bg-[#f97316] text-white shadow-orange-500/10 hover:bg-[#fb923c]" : ""}
+                       ${wire.color === "PURPLE" ? "bg-[#9333ea] text-white shadow-purple-600/10 hover:bg-[#a855f7]" : ""}
+                    `
+                  }
                 `}
               >
-                {wire.label}
+                {wire.isCut ? `⚡ [SEVERED] ${wire.label}` : wire.label}
               </button>
             ))}
           </div>
