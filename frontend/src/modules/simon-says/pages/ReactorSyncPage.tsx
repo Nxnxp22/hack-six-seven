@@ -9,6 +9,8 @@ import {
 } from "../apis/gameEngine";
 import SimonButton from "../components/SimonButton";
 import { calculateCoinsReward, calculateStabilityChange, SHARED_GAME_RULES } from "../apis/sharedRules";
+import { useNavigate } from "react-router-dom";
+import { fetchCoins, applyCoins, fetchStability } from "../../powerOverload/services/stabilityApi";
 
 export default function ReactorSyncPage() {
   const [phase, setPhase] = useState<GamePhase>("idle");
@@ -60,15 +62,10 @@ export default function ReactorSyncPage() {
     }
     return 20;
   });
+  const navigate = useNavigate();
   const [showManual, setShowManual] = useState(false);
-  const [coins, setCoins] = useState(() => {
-    const saved = localStorage.getItem("operator_coins");
-    return saved ? parseInt(saved, 10) : 100;
-  });
-  const [stability, setStability] = useState(() => {
-    const saved = localStorage.getItem("reactor_stability");
-    return saved ? parseInt(saved, 10) : 50;
-  });
+  const [coins, setCoins] = useState(100);
+  const [stability, setStability] = useState(50);
   const [roundCoinsEarned, setRoundCoinsEarned] = useState(0);
   const [roundStabilityDelta, setRoundStabilityDelta] = useState(0);
   const [attemptsLeft, setAttemptsLeft] = useState(() => {
@@ -77,18 +74,16 @@ export default function ReactorSyncPage() {
   });
 
   useEffect(() => {
+    fetchCoins().then(({ balance }) => setCoins(balance)).catch(() => {});
+    fetchStability().then(({ modules }) => {
+      const reactionFailureStability = modules.find(m => m.moduleId === "reactionFailure")?.stability ?? 100;
+      setStability(reactionFailureStability);
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     localStorage.setItem("reactor_attempts_left", String(attemptsLeft));
   }, [attemptsLeft]);
-
-
-
-  useEffect(() => {
-    localStorage.setItem("operator_coins", String(coins));
-  }, [coins]);
-
-  useEffect(() => {
-    localStorage.setItem("reactor_stability", String(stability));
-  }, [stability]);
 
   useEffect(() => {
     if (phase === "memorize" || phase === "replicate") {
@@ -119,9 +114,20 @@ export default function ReactorSyncPage() {
     return () => clearInterval(timer);
   }, [phase]);
 
+  const flashTimeoutsRef = useRef<number[]>([]);
+  const clearFlashTimeouts = useCallback(() => {
+    flashTimeoutsRef.current.forEach(t => clearTimeout(t));
+    flashTimeoutsRef.current = [];
+  }, []);
+
+  useEffect(() => {
+    return () => clearFlashTimeouts();
+  }, [clearFlashTimeouts]);
+
   // Flash sequence
   const flashSequence = useCallback(
     (seq: Color[], gameConfig: typeof config) => {
+      clearFlashTimeouts();
       setPhase("memorize");
       setCurrentFlashIndex(0);
       let i = 0;
@@ -134,17 +140,20 @@ export default function ReactorSyncPage() {
         }
         setFlashingColor(seq[i]);
         setCurrentFlashIndex(i + 1);
-        setTimeout(() => {
+        const t1 = window.setTimeout(() => {
           setFlashingColor(null);
-          setTimeout(() => {
+          const t2 = window.setTimeout(() => {
             i++;
             next();
           }, gameConfig.flashIntervalMs);
+          flashTimeoutsRef.current.push(t2);
         }, gameConfig.flashDurationMs);
+        flashTimeoutsRef.current.push(t1);
       };
-      setTimeout(next, 600);
+      const startT = window.setTimeout(next, 600);
+      flashTimeoutsRef.current.push(startT);
     },
-    [],
+    [clearFlashTimeouts],
   );
 
   // Randomize game difficulty (config & sequence length)
@@ -160,9 +169,9 @@ export default function ReactorSyncPage() {
     const timerSeconds = calculatedDifficulty === "easy" ? 30 : calculatedDifficulty === "medium" ? 20 : 15;
 
     const randomFlashDuration =
-      randomLength >= 7 ? 300 : randomLength >= 5 ? 500 : 800;
+      randomLength >= 7 ? 600 : randomLength >= 5 ? 500 : 800;
     const randomFlashInterval =
-      randomLength >= 7 ? 200 : randomLength >= 5 ? 300 : 400;
+      randomLength >= 7 ? 400 : randomLength >= 5 ? 300 : 400;
 
     const newConfig = {
       sequenceLength: randomLength,
@@ -216,7 +225,7 @@ export default function ReactorSyncPage() {
   }, [phase]);
 
   // Buy hint logic to replay the entire sequence
-  const buyHint = () => {
+  const buyHint = async () => {
     if (phase !== "replicate") return;
     const cost = SHARED_GAME_RULES.hints.cost[hintsUsed];
     if (coins < cost) {
@@ -224,12 +233,14 @@ export default function ReactorSyncPage() {
       return;
     }
     
-    // Deduct coins and record hint use
-    setCoins((prev) => prev - cost);
-    setHintsUsed((prev) => prev + 1);
-
-    // Replay the entire pattern sequence
-    flashSequence(sequence, config);
+    try {
+      const { balance } = await applyCoins(-cost);
+      setCoins(balance);
+      setHintsUsed((prev) => prev + 1);
+      flashSequence(sequence, config);
+    } catch {
+      alert("Failed to purchase hint from backend.");
+    }
   };
 
   // Player clicks a button
@@ -288,7 +299,7 @@ export default function ReactorSyncPage() {
         {/* Left Actions */}
         <div className="flex items-center gap-8">
           <button
-            onClick={() => window.history.back()}
+            onClick={() => navigate('/')}
             className="flex items-center gap-2 text-gray-500 hover:text-white text-xs font-bold tracking-widest transition-colors cursor-pointer"
           >
             ← BACK
@@ -608,12 +619,12 @@ export default function ReactorSyncPage() {
               )}
               <button
                 onClick={() => {
-                  setPhase("idle");
-                  setPlayerInputs([]);
-                  setSequence([]);
-                  setSecondsLeft(config.timerSeconds);
-                  setAttemptsLeft(1); // Reset attempts back to 1
                   localStorage.removeItem("reactor_seconds_left"); // Explicitly clear saved seconds
+                  navigate('/', {
+                    state: phase === "success"
+                      ? { stabilityGained: roundStabilityDelta, coinsGained: roundCoinsEarned, feature: 'reactionFailure' }
+                      : { stabilityLost: Math.abs(roundStabilityDelta), feature: 'reactionFailure' }
+                  });
                 }}
                 className="w-full bg-[#121212] hover:bg-[#1A1A1A] border border-gray-850 text-white font-bold py-2.5 rounded text-xs tracking-wider cursor-pointer transition-colors uppercase"
               >

@@ -1,24 +1,32 @@
-import 'dotenv/config';
-import express from 'express';
-import cors from 'cors';
-import cookieParser from 'cookie-parser';
-import morgan from 'morgan';
-import router from './routers';
+import 'dotenv/config'
+import express from 'express'
+import cors from 'cors'
+import morgan from 'morgan'
+import cookieParser from 'cookie-parser'
+import router from './routers'
+import { errorHandler } from './middlewares/error_handler'
 
-const app = express();
-const port = process.env.PORT || 3000;
+const app = express()
+const PORT = process.env.PORT ?? 3000
 
-app.use(morgan('dev'));
+app.disable('x-powered-by')
+app.use(morgan('dev'))
 app.use(cors({
   origin: process.env.ALLOW_ORIGIN || 'http://localhost:5173',
   credentials: true,
-}));
-app.use(express.json());
-app.use(cookieParser());
+}))
+app.use(express.json())
+app.use(cookieParser())
 
 // Mount routers under /api
-app.use('/api', router);
+app.use('/api', router)
 
-app.listen(port, () => {
-  console.log(`[server]: Server is running at http://localhost:${port}`);
-});
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'healthy', system: 'nexus-core-backend' })
+})
+
+app.use(errorHandler)
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`)
+})
