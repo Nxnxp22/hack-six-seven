@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { GameState } from './types'
 import { fetchNewGame, cutWire, fetchManualRules, fetchHint } from './services/gameApi'
@@ -35,6 +35,8 @@ const PowerOverloadHardPage: React.FC = () => {
   const [isManualOpen, setIsManualOpen] = useState<boolean>(false)
   const [rules, setRules]           = useState<DBManualRule[]>([])
   const [result, setResult]         = useState<GameResult | null>(null)
+  const [isCutting, setIsCutting]   = useState<boolean>(false)
+  const gameOverRef                 = useRef(false)
   const [modules, setModules]       = useState<ModuleStabilityItem[]>([])
 
   useEffect(() => {
@@ -112,34 +114,39 @@ const PowerOverloadHardPage: React.FC = () => {
   }
 
   const handleWireCut = async (wireId: string) => {
-    if (!game) return
+    if (!game || gameOverRef.current || isCutting) return
+    setIsCutting(true)
     try {
       const response = await cutWire(game.sessionId, wireId)
       if (response.success) {
         const updatedWires = game.wires.map(w => w.id === wireId ? { ...w, isCut: true } : w)
         setGame({ ...game, currentCuts: response.currentCuts, wires: updatedWires })
         if (response.isGameOver) {
+          gameOverRef.current = true
           sessionStorage.removeItem('active_game_session_id')
           sessionStorage.removeItem('active_game_difficulty')
           sessionStorage.removeItem('active_game_start_time')
           const timeTaken   = game.timeLimitSeconds - seconds
           const coinsChange = 10 + Math.floor((seconds / game.timeLimitSeconds) * 30)
           setResult({ success: true, stabilityChange: 20, coinsChange, timeTaken })
+        } else {
+          setIsCutting(false)
         }
       } else {
+        gameOverRef.current = true
         sessionStorage.removeItem('active_game_session_id')
         sessionStorage.removeItem('active_game_difficulty')
         sessionStorage.removeItem('active_game_start_time')
         setResult({ success: false, stabilityChange: -10, coinsChange: 0, timeTaken: game.timeLimitSeconds - seconds })
       }
     } catch (err: any) {
-      // Session lost (backend restarted) — clear stale session and reload fresh game
-      if (err?.response?.status === 404) {
+      if (err?.response?.status === 404 && !gameOverRef.current) {
         sessionStorage.removeItem('active_game_session_id')
         sessionStorage.removeItem('active_game_difficulty')
         sessionStorage.removeItem('active_game_start_time')
         window.location.reload()
-      } else {
+      } else if (!gameOverRef.current) {
+        setIsCutting(false)
         console.error('Error cutting wire:', err)
       }
     }
@@ -275,7 +282,7 @@ const PowerOverloadHardPage: React.FC = () => {
             {game.wires.map((wire) => (
               <button
                 key={wire.id}
-                disabled={wire.isCut}
+                disabled={wire.isCut || isCutting || !!result}
                 onClick={() => handleWireCut(wire.id)}
                 className={`w-full py-4 px-6 rounded font-black text-xs text-left uppercase tracking-[0.15em] transition-all transform
                   ${wire.isCut

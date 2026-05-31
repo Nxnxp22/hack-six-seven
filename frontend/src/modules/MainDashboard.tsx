@@ -355,7 +355,7 @@ const MainDashboard: React.FC = () => {
               className="text-[#e91e8c] font-black text-sm tracking-[0.2em] uppercase"
               style={{ textShadow: "0 0 20px rgba(233,30,140,0.5)" }}
             >
-              NEXUS CONTROL
+              PROJECT OSCORP
             </div>
             <div className="text-zinc-500 text-[9px] tracking-[0.25em] uppercase">
               EMERGENCY BUNKERS SYSTEM HUD

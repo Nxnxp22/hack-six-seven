@@ -11,6 +11,7 @@ import SimonButton from "../components/SimonButton";
 import { calculateCoinsReward, calculateStabilityChange, SHARED_GAME_RULES } from "../apis/sharedRules";
 import { useNavigate } from "react-router-dom";
 import { fetchCoins, applyCoins, fetchStability } from "../../powerOverload/services/stabilityApi";
+import MissionResultPopup from "../../../components/MissionResultPopup";
 
 export default function ReactorSyncPage() {
   const [phase, setPhase] = useState<GamePhase>("idle");
@@ -68,6 +69,7 @@ export default function ReactorSyncPage() {
   const [stability, setStability] = useState(50);
   const [roundCoinsEarned, setRoundCoinsEarned] = useState(0);
   const [roundStabilityDelta, setRoundStabilityDelta] = useState(0);
+  const [roundTimeTakenSec, setRoundTimeTakenSec] = useState(0);
   const [attemptsLeft, setAttemptsLeft] = useState(() => {
     const saved = localStorage.getItem("reactor_attempts_left");
     return saved ? parseInt(saved, 10) : 1;
@@ -260,23 +262,29 @@ export default function ReactorSyncPage() {
   useEffect(() => {
     if (phase === "success") {
       const timeTakenMs = Date.now() - startTimeRef.current;
+      const timeTakenSec = Math.floor(timeTakenMs / 1000);
       const earnedCoins = calculateCoinsReward(dynamicDifficulty, timeTakenMs, config.timerSeconds, true);
       const stabilityDelta = calculateStabilityChange(dynamicDifficulty, true);
-      
+
+      setRoundTimeTakenSec(timeTakenSec);
       setRoundCoinsEarned(earnedCoins);
       setRoundStabilityDelta(stabilityDelta);
-      
+
       setCoins((c) => c + earnedCoins);
       setStability((s) => Math.min(100, Math.max(0, s + stabilityDelta)));
-      setAttemptsLeft(1); // Reset attempts on successful sync
+      setAttemptsLeft(1);
     } else if (phase === "fail") {
+      const timeTakenSec = startTimeRef.current > 0
+        ? Math.min(config.timerSeconds, Math.floor((Date.now() - startTimeRef.current) / 1000))
+        : config.timerSeconds;
       const stabilityDelta = calculateStabilityChange(dynamicDifficulty, false);
-      
+
+      setRoundTimeTakenSec(timeTakenSec);
       setRoundCoinsEarned(0);
       setRoundStabilityDelta(stabilityDelta);
-      
+
       setStability((s) => Math.min(100, Math.max(0, s + stabilityDelta)));
-      setAttemptsLeft((prev) => Math.max(0, prev - 1)); // Deduct 1 attempt/heart on failure
+      setAttemptsLeft((prev) => Math.max(0, prev - 1));
     }
   }, [phase, dynamicDifficulty, config.timerSeconds]);
 
@@ -294,6 +302,28 @@ export default function ReactorSyncPage() {
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col font-sans select-none">
+      {(phase === "success" || phase === "fail") && (
+        <MissionResultPopup
+          success={phase === "success"}
+          title="REACTION FAILURE"
+          stabilityChange={roundStabilityDelta}
+          coinsChange={roundCoinsEarned}
+          timeTaken={roundTimeTakenSec}
+          timeLimit={config.timerSeconds}
+          accentColor="orange"
+          successMessage="Reactor synchronized. Cooling sequence complete. Core temperature stabilized."
+          failMessage="Reactor mismatch. Cooling sequence failed. Core temperature critical."
+          onReturn={() => {
+            localStorage.removeItem("reactor_seconds_left");
+            navigate("/", {
+              state: phase === "success"
+                ? { stabilityGained: roundStabilityDelta, coinsGained: roundCoinsEarned, feature: "reactionFailure" }
+                : { stabilityLost: Math.abs(roundStabilityDelta), feature: "reactionFailure" },
+            });
+          }}
+        />
+      )}
+
       {/* Top Nav / Header */}
       <div className="flex items-center justify-between px-10 py-6 border-b border-[#111111] bg-black">
         {/* Left Actions */}
