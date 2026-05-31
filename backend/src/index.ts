@@ -1,31 +1,32 @@
-import express from 'express';
-import cors from 'cors';
-import morgan from 'morgan';
-import cookieParser from 'cookie-parser';
-import apiRouter from './routers.js';
+import 'dotenv/config'
+import express from 'express'
+import cors from 'cors'
+import morgan from 'morgan'
+import cookieParser from 'cookie-parser'
+import router from './routers'
+import { errorHandler } from './middlewares/error_handler'
 
-const app = express();
-const PORT = process.env.PORT;
+const app = express()
+const PORT = process.env.PORT ?? 3000
 
-// Enable CORS from Vite frontend
+app.disable('x-powered-by')
+app.use(morgan('dev'))
 app.use(cors({
-  origin: ['http://localhost:5173'],
-  credentials: true
-}));
+  origin: process.env.ALLOW_ORIGIN || 'http://localhost:5173',
+  credentials: true,
+}))
+app.use(express.json())
+app.use(cookieParser())
 
-app.use(morgan('dev'));
-app.use(express.json());
-app.use(cookieParser());
+// Mount routers under /api
+app.use('/api', router)
 
-// Mount API routes
-app.use('/api', apiRouter);
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'healthy', system: 'nexus-core-backend' })
+})
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'healthy', system: 'nexus-core-backend' });
-});
+app.use(errorHandler)
 
-// Start Express server
 app.listen(PORT, () => {
-  console.log(`  [server]: Server is running at http://localhost:${PORT}`);
-});
+  console.log(`Server running on http://localhost:${PORT}`)
+})

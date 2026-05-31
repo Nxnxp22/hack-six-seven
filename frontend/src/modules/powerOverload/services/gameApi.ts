@@ -43,6 +43,8 @@ export interface HintResponse {
   success: boolean;
   hintText: string;
   cost: number;
+  balance: number;
+  message?: string;
 }
 
 export const fetchHint = async (

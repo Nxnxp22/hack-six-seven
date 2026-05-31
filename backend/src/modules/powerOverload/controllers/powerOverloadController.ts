@@ -1,14 +1,14 @@
 import { Request, Response } from 'express';
 import { getRulesFromDB, getCriticalTemplateFromDB } from '../../../db.js';
 import { prisma } from '../../../prisma.js';
-
+ 
 interface Wire {
   id: string;
   color: string;
   label: string;
   isCut: boolean;
 }
-
+ 
 interface GameSession {
   sessionId: string;
   serialNumber: string;
@@ -20,10 +20,10 @@ interface GameSession {
   timeLimitSeconds: number;
   hintsPurchasedCount: number;
 }
-
+ 
 // In-memory active game sessions cache
 const sessions = new Map<string, GameSession>();
-
+ 
 const generateRandomWires = (count: number): Wire[] => {
   const colorPool = ['GREEN', 'YELLOW', 'CYAN', 'RED', 'BLUE', 'ORANGE', 'PURPLE'];
   const shuffled = [...colorPool].sort(() => Math.random() - 0.5);
@@ -38,7 +38,7 @@ const generateRandomWires = (count: number): Wire[] => {
     isCut: false
   }));
 };
-
+ 
 // Solve function matching rulebook logic
 const solveGrid = (wireList: Wire[], diff: string): number[] => {
   if (diff === 'EASY') {
@@ -60,21 +60,21 @@ const solveGrid = (wireList: Wire[], diff: string): number[] => {
     } else {
       t1 = 2; // 3rd (middle) wire
     }
-
+ 
     let t2 = -1;
     if (wireList[wireList.length - 1].color === 'GREEN') {
       t2 = wireList.length - 1;
     } else {
       t2 = 0; // 1st wire
     }
-
+ 
     if (t1 === t2) {
       t2 = wireList.length - 1; // Cut last wire instead
     }
-
+ 
     return [t1, t2];
   }
-
+ 
   // HARD (5 wires)
   const cuts = new Set<number>();
   
@@ -82,7 +82,7 @@ const solveGrid = (wireList: Wire[], diff: string): number[] => {
     ? wireList.findIndex(w => w.color === 'GREEN') 
     : 0;
   cuts.add(w1);
-
+ 
   let w2 = wireList.some(w => w.color === 'CYAN')
     ? wireList.findIndex(w => w.color === 'CYAN')
     : 3;
@@ -91,20 +91,20 @@ const solveGrid = (wireList: Wire[], diff: string): number[] => {
     w2 = (w2 + 1) % 5;
   }
   cuts.add(w2);
-
+ 
   const lastColor = wireList[wireList.length - 1].color;
   let w3 = (lastColor === 'ORANGE' || lastColor === 'PURPLE')
     ? wireList.length - 1
     : 1;
-
+ 
   while (cuts.has(w3)) {
     w3 = (w3 + 1) % 5;
   }
   cuts.add(w3);
-
+ 
   return [w1, w2, w3];
 };
-
+ 
 /**
  * Starts a new game session and calculates correct sequence.
  */
@@ -112,7 +112,7 @@ export const getNewGame = async (req: Request, res: Response): Promise<void> => 
   try {
     const { difficulty, restoreSessionId } = req.body;
     const diff = (difficulty || 'EASY').toUpperCase() as 'EASY' | 'MEDIUM' | 'HARD';
-
+ 
     if (restoreSessionId) {
       const existing = sessions.get(restoreSessionId);
       if (existing && existing.difficulty === diff) {
@@ -130,7 +130,7 @@ export const getNewGame = async (req: Request, res: Response): Promise<void> => 
               default: return 'SYSTEM-NODE';
             }
           };
-
+ 
           const getHexColor = (color: string): string => {
             switch (color) {
               case 'RED': return '#E11D48';
@@ -143,7 +143,7 @@ export const getNewGame = async (req: Request, res: Response): Promise<void> => 
               default: return '#FFFFFF';
             }
           };
-
+ 
           let instruction = '';
           if (diff === 'EASY') {
             const color = existing.wires[existing.correctSequence[0]]?.color || 'GREEN';
@@ -158,7 +158,7 @@ export const getNewGame = async (req: Request, res: Response): Promise<void> => 
             const name3 = getSystemName(existing.wires[existing.correctSequence[2]]?.color);
             instruction = template.replace('{name1}', name1).replace('{name2}', name2).replace('{name3}', name3);
           }
-
+ 
           res.status(200).json({
             sessionId: existing.sessionId,
             serialNumber: existing.serialNumber,
@@ -173,73 +173,33 @@ export const getNewGame = async (req: Request, res: Response): Promise<void> => 
         }
       }
     }
-
+ 
     const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     const randLetter = () => letters[Math.floor(Math.random() * letters.length)];
     const randDigit = () => Math.floor(Math.random() * 10);
     const serial = `PKY-${randDigit()}${randDigit()}${randDigit()}${randLetter()}`;
-
+ 
     let generatedWires: Wire[] = [];
     let neededCuts = 1;
     let timeLimit = 60;
-
+ 
     if (diff === 'EASY') {
-      generatedWires = [
-        { id: 'w1', color: 'GREEN', label: 'GREEN', isCut: false },
-        { id: 'w2', color: 'YELLOW', label: 'YELLOW', isCut: false },
-        { id: 'w3', color: 'CYAN', label: 'CYAN', isCut: false }
-      ];
+      generatedWires = generateRandomWires(3);
       neededCuts = 1;
       timeLimit = 60;
     } else if (diff === 'MEDIUM') {
-      generatedWires = [
-        { id: 'w1', color: 'GREEN', label: 'GREEN', isCut: false },
-        { id: 'w2', color: 'YELLOW', label: 'YELLOW', isCut: false },
-        { id: 'w3', color: 'CYAN', label: 'CYAN', isCut: false },
-        { id: 'w4', color: 'RED', label: 'RED', isCut: false },
-        { id: 'w5', color: 'PURPLE', label: 'PURPLE', isCut: false }
-      ];
+      generatedWires = generateRandomWires(5);
       neededCuts = 2;
       timeLimit = 30;
     } else {
-      generatedWires = [
-        { id: 'w1', color: 'GREEN', label: 'GREEN', isCut: false },
-        { id: 'w2', color: 'YELLOW', label: 'YELLOW', isCut: false },
-        { id: 'w3', color: 'CYAN', label: 'CYAN', isCut: false },
-        { id: 'w4', color: 'RED', label: 'RED', isCut: false },
-        { id: 'w5', color: 'PURPLE', label: 'PURPLE', isCut: false }
-      ];
+      generatedWires = generateRandomWires(5);
       neededCuts = 3;
       timeLimit = 25;
     }
-
+ 
     const sessionId = `sess_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    let correctSequence: number[] = [];
-
-    if (diff === 'EASY') {
-      correctSequence = [Math.floor(Math.random() * 3)];
-    } else if (diff === 'MEDIUM') {
-      const pool = [0, 1, 2, 3, 4];
-      const selected: number[] = [];
-      while (selected.length < 2) {
-        const randIdx = pool[Math.floor(Math.random() * pool.length)];
-        if (!selected.includes(randIdx)) {
-          selected.push(randIdx);
-        }
-      }
-      correctSequence = selected;
-    } else {
-      const pool = [0, 1, 2, 3, 4];
-      const selected: number[] = [];
-      while (selected.length < 3) {
-        const randIdx = pool[Math.floor(Math.random() * pool.length)];
-        if (!selected.includes(randIdx)) {
-          selected.push(randIdx);
-        }
-      }
-      correctSequence = selected;
-    }
-
+    const correctSequence = solveGrid(generatedWires, diff);
+ 
     const session: GameSession = {
       sessionId,
       serialNumber: serial,
@@ -251,9 +211,9 @@ export const getNewGame = async (req: Request, res: Response): Promise<void> => 
       timeLimitSeconds: timeLimit,
       hintsPurchasedCount: 0,
     };
-
+ 
     sessions.set(sessionId, session);
-
+ 
     // Helpers for dynamic hints
     const getSystemName = (color: string): string => {
       switch (color) {
@@ -267,7 +227,7 @@ export const getNewGame = async (req: Request, res: Response): Promise<void> => 
         default: return 'SYSTEM-NODE';
       }
     };
-
+ 
     const getHexColor = (color: string): string => {
       switch (color) {
         case 'RED': return '#E11D48';
@@ -280,7 +240,7 @@ export const getNewGame = async (req: Request, res: Response): Promise<void> => 
         default: return '#FFFFFF';
       }
     };
-
+ 
     const template = await getCriticalTemplateFromDB(diff);
     if (!template) {
       res.status(503).json({
@@ -288,9 +248,9 @@ export const getNewGame = async (req: Request, res: Response): Promise<void> => 
       });
       return;
     }
-
+ 
     let instruction = '';
-
+ 
     if (diff === 'EASY') {
       const color = generatedWires[correctSequence[0]]?.color || 'GREEN';
       instruction = template.replace('{color}', color);
@@ -304,7 +264,7 @@ export const getNewGame = async (req: Request, res: Response): Promise<void> => 
       const name3 = getSystemName(generatedWires[correctSequence[2]]?.color);
       instruction = template.replace('{name1}', name1).replace('{name2}', name2).replace('{name3}', name3);
     }
-
+ 
     res.status(200).json({
       sessionId,
       serialNumber: serial,
@@ -319,7 +279,7 @@ export const getNewGame = async (req: Request, res: Response): Promise<void> => 
     res.status(500).json({ error: error.message });
   }
 };
-
+ 
 /**
  * Checks a cut wire request.
  */
@@ -331,40 +291,40 @@ export const checkWire = async (req: Request, res: Response): Promise<void> => {
       res.status(400).json({ success: false, message: 'Missing sessionId or wireId.' });
       return;
     }
-
+ 
     const session = sessions.get(sessionId);
     if (!session) {
       res.status(404).json({ success: false, message: 'Active game session not found.' });
       return;
     }
-
+ 
     const wireIdx = session.wires.findIndex(w => w.id === wireId);
     if (wireIdx === -1) {
       res.status(404).json({ success: false, message: 'Wire not found in junction box.' });
       return;
     }
-
+ 
     if (session.wires[wireIdx].isCut) {
       res.status(400).json({ success: false, message: 'Wire has already been severed.' });
       return;
     }
-
+ 
     // Cut the wire in session
     session.wires[wireIdx].isCut = true;
-
+ 
     // Check if correct cut in sequence
     const currentStep = session.cutHistory.length;
     const expectedIdx = session.correctSequence[currentStep];
-
+ 
     if (wireIdx === expectedIdx) {
       session.cutHistory.push(wireIdx);
       const currentCuts = session.cutHistory.length;
       const isGameOver = currentCuts === session.totalCutsNeeded;
-
+ 
       if (isGameOver) {
         sessions.delete(sessionId);
       }
-
+ 
       res.status(200).json({
         success: true,
         currentCuts,
@@ -384,7 +344,7 @@ export const checkWire = async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
+ 
 /**
  * Fetches decoding rules from the database.
  */
@@ -397,7 +357,7 @@ export const getManual = async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ error: error.message });
   }
 };
-
+ 
 /**
  * Reveals a hint for the current session.
  * Request body: { sessionId, hintOrder }
@@ -407,36 +367,36 @@ export const getManual = async (req: Request, res: Response): Promise<void> => {
 export const getHint = async (req: Request, res: Response): Promise<void> => {
   try {
     const { sessionId, hintOrder } = req.body;
-
+ 
     if (!sessionId || !hintOrder) {
       res.status(400).json({ success: false, message: 'Missing sessionId or hintOrder.' });
       return;
     }
-
+ 
     const session = sessions.get(sessionId);
     if (!session) {
       res.status(404).json({ success: false, message: 'Active game session not found.' });
       return;
     }
-
+ 
     // Enforce difficulty-specific hint limits: Easy = 1, Medium = 2, Hard = 3
     const maxAllowed = session.difficulty === 'EASY' ? 1 : session.difficulty === 'MEDIUM' ? 2 : 3;
     if ((session.hintsPurchasedCount ?? 0) >= maxAllowed) {
       res.status(400).json({ success: false, message: 'HINT_LIMIT_REACHED' });
       return;
     }
-
+ 
     const cost = hintOrder === 1 ? 15 : 20;
-
+ 
     // Read coin balance from DB
     const coinRow = await prisma.gameCoins.findFirst();
     const currentBalance = coinRow?.balance ?? 100;
-
+ 
     if (currentBalance < cost) {
       res.status(400).json({ success: false, message: 'INSUFFICIENT_COINS', cost, balance: currentBalance });
       return;
     }
-
+ 
     // Deduct coins in DB
     const newBalance = currentBalance - cost;
     if (coinRow) {
@@ -444,20 +404,20 @@ export const getHint = async (req: Request, res: Response): Promise<void> => {
     } else {
       await prisma.gameCoins.create({ data: { balance: newBalance } });
     }
-
+ 
     // Increment hint purchased count
     session.hintsPurchasedCount = (session.hintsPurchasedCount ?? 0) + 1;
-
+ 
     // Calculate hint text
     let hintText = '';
     const nextStepIdx = session.cutHistory.length;
-
+ 
     if (nextStepIdx >= session.totalCutsNeeded) {
       hintText = 'Defusal already complete. No further hints required.';
     } else {
       const correctIdx = session.correctSequence[nextStepIdx];
       const correctWire = session.wires[correctIdx];
-
+ 
       if (hintOrder === 1) {
         // Hint 1: cryptic/50-50 choice
         // Find all other wires in the junction box that have a different color than the correct wire
@@ -469,7 +429,7 @@ export const getHint = async (req: Request, res: Response): Promise<void> => {
         
         // Randomly shuffle the display order of the two colors so correct isn't always first
         const choices = [correctWire.color, incorrectColor].sort(() => Math.random() - 0.5);
-
+ 
         if (session.difficulty === 'EASY') {
           hintText = `DECRYPTION HINT (HINT 1): The target wire to stabilize the junction is either ${choices[0]} or ${choices[1]}.`;
         } else {
@@ -484,9 +444,10 @@ export const getHint = async (req: Request, res: Response): Promise<void> => {
         }
       }
     }
-
+ 
     res.status(200).json({ success: true, hintText, cost, balance: newBalance });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+ 

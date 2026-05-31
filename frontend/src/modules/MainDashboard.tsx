@@ -107,7 +107,7 @@ const INITIAL_MODULES: GameModule[] = [
     stability: 100,
     decayIntervalMs: 7000,
     route: "/reaction-failure",
-    implemented: false,
+    implemented: true,
     accentHex: "#f97316",
     accentClass: "text-orange-400",
     barClass: "bg-orange-400",
@@ -124,7 +124,7 @@ const INITIAL_MODULES: GameModule[] = [
     stability: 100,
     decayIntervalMs: 10000,
     route: "/comm-collapse",
-    implemented: false,
+    implemented: true,
     accentHex: "#22d3ee",
     accentClass: "text-cyan-400",
     barClass: "bg-cyan-400",
@@ -141,7 +141,7 @@ const INITIAL_MODULES: GameModule[] = [
     stability: 100,
     decayIntervalMs: 14000,
     route: "/security-lockdown",
-    implemented: false,
+    implemented: true,
     accentHex: "#c084fc",
     accentClass: "text-purple-400",
     barClass: "bg-purple-400",
@@ -517,7 +517,7 @@ const MainDashboard: React.FC = () => {
                 </div>
 
                 {/* Description */}
-                <p className="text-zinc-500 text-[11px] leading-relaxed mb-4 font-sans">
+                <p className="text-zinc-500 text-[11px] leading-relaxed mb-4 font-mono">
                   {mod.description}
                 </p>
 

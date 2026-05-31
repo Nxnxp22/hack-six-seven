@@ -4,6 +4,7 @@ export interface Wire {
     id: string;
     color: WireColor;
     label: string;
+    isCut?: boolean;
 }
 
 export interface GameState {

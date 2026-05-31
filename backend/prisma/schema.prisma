@@ -1,11 +1,79 @@
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "sqlite"
 }
+
+model SimonSaysScore {
+  id          Int      @id @default(autoincrement())
+  playerName  String
+  difficulty  String
+  score       Int
+  win         Boolean
+  timeTakenMs Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+//security lockdown
+
+model GameState {
+  id                     String   @id @default(cuid())
+  coins                  Int      @default(100)
+  securityStability      Int      @default(100)
+  powerStability         Int      @default(100)
+  reactorStability       Int      @default(100)
+  communicationStability Int      @default(100)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+model PasswordPuzzle {
+  id         String          @id @default(cuid())
+  title      String
+  difficulty Difficulty
+  clueText   String
+  answer     String
+  timeLimit  Int             @default(90)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  hints      PuzzleHint[]
+  attempts   PuzzleAttempt[]
+}
+
+model PuzzleHint {
+  id        String         @id @default(cuid())
+  puzzleId  String
+  puzzle    PasswordPuzzle @relation(fields: [puzzleId], references: [id])
+  hintText  String
+  order     Int
+  coinCost  Int
+  createdAt DateTime       @default(now())
+}
+
+model PuzzleAttempt {
+  id              String         @id @default(cuid())
+  puzzleId        String
+  puzzle          PasswordPuzzle @relation(fields: [puzzleId], references: [id])
+  correct         Boolean
+  timeTaken       Int
+  hintsUsed       Int            @default(0)
+  coinsSpentHints Int            @default(0)
+  coinsChange     Int
+  stabilityChange Int
+  createdAt       DateTime       @default(now())
+}
+
+// Power Overload
 
 model DecodingRule {
   id          Int    @id @default(autoincrement())
@@ -24,9 +92,11 @@ model CriticalTemplate {
   @@map("critical_templates")
 }
 
+//  Stability / Shared
+
 model ModuleStability {
   id             Int      @id @default(autoincrement())
-  moduleId       String   @unique  // e.g. "powerOverload"
+  moduleId       String   @unique
   startedAt      DateTime @default(now())
   bonusStability Int      @default(0)
 
@@ -38,4 +108,13 @@ model GameCoins {
   balance Int @default(100)
 
   @@map("game_coins")
+}
+
+model MorseChallenge {
+  id         String   @id @default(uuid())
+  word       String
+  category   String   @default("general")
+  difficulty String   @default("easy")
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
 }
