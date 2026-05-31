@@ -7,14 +7,8 @@ import {
   type Difficulty,
   type GamePhase,
 } from "../apis/gameEngine";
-import {
-  calculateCoinsReward,
-  calculateStabilityChange,
-  SHARED_GAME_RULES,
-} from "../apis/sharedRules";
-import { createScore } from "../apis/scoreApi";
 import SimonButton from "../components/SimonButton";
-import Leaderboard from "../components/Leaderboard";
+import { calculateCoinsReward, calculateStabilityChange, SHARED_GAME_RULES } from "../apis/sharedRules";
 
 export default function ReactorSyncPage() {
   const [phase, setPhase] = useState<GamePhase>("idle");
@@ -28,7 +22,8 @@ export default function ReactorSyncPage() {
         parsed.timerSeconds = difficulty === "easy" ? 30 : difficulty === "medium" ? 20 : 15;
         return parsed;
       }
-    } catch (e) {}
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (e) { /* empty */ }
     return {
       sequenceLength: 5,
       flashDurationMs: 500,
@@ -60,7 +55,8 @@ export default function ReactorSyncPage() {
         const seqLength = parsed.sequenceLength || 5;
         const difficulty = seqLength <= 4 ? "easy" : seqLength <= 6 ? "medium" : "hard";
         return difficulty === "easy" ? 30 : difficulty === "medium" ? 20 : 15;
-      } catch (e) {}
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (e) { /* empty */ }
     }
     return 20;
   });
@@ -152,30 +148,6 @@ export default function ReactorSyncPage() {
   );
 
   // Randomize game difficulty (config & sequence length)
-  const randomizeDifficulty = () => {
-    const randomLength = Math.floor(Math.random() * 6) + 3; // 3 to 8 steps
-    const calculatedDifficulty =
-      randomLength <= 4 ? "easy" : randomLength <= 6 ? "medium" : "hard";
-    setDynamicDifficulty(calculatedDifficulty);
-    localStorage.setItem("reactor_game_difficulty", calculatedDifficulty);
-
-    const timerSeconds = calculatedDifficulty === "easy" ? 30 : calculatedDifficulty === "medium" ? 20 : 15;
-
-    const randomFlashDuration =
-      randomLength >= 7 ? 300 : randomLength >= 5 ? 500 : 800;
-    const randomFlashInterval =
-      randomLength >= 7 ? 200 : randomLength >= 5 ? 300 : 400;
-
-    const newConfig = {
-      sequenceLength: randomLength,
-      flashDurationMs: randomFlashDuration,
-      flashIntervalMs: randomFlashInterval,
-      timerSeconds: timerSeconds,
-    };
-    setConfig(newConfig);
-    localStorage.setItem("reactor_game_config", JSON.stringify(newConfig));
-    setSecondsLeft(timerSeconds);
-  };
 
   // Start new round with randomized difficulty
   const startNewRound = () => {
@@ -234,6 +206,7 @@ export default function ReactorSyncPage() {
     if (phase === "idle") {
       const savedSeconds = localStorage.getItem("reactor_seconds_left");
       if (savedSeconds) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         startGame();
       } else {
         startNewRound(); // Randomize difficulty and start fresh!

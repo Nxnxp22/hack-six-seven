@@ -36,7 +36,7 @@ export const SHARED_GAME_RULES: GameRuleConfig = {
  * @param win Whether the player won
  */
 export function calculateCoinsReward(
-  difficulty: 'easy' | 'medium' | 'hard',
+  _difficulty: 'easy' | 'medium' | 'hard',
   timeTakenMs: number,
   timerSeconds: number,
   win: boolean
