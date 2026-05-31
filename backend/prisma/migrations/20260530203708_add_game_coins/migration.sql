@@ -1,0 +1,5 @@
+-- CreateTable
+CREATE TABLE "game_coins" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "balance" INTEGER NOT NULL DEFAULT 100
+);

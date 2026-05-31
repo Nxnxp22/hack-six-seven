@@ -8,13 +8,13 @@ function MorseBar({ code }: { code: string }) {
           <span
             key={i}
             className="inline-block rounded-full bg-cyan-400"
-            style={{ width: 6, height: 6 }}
+            style={{ width: 5, height: 5 }}
           />
         ) : (
           <span
             key={i}
             className="inline-block rounded-sm bg-cyan-400"
-            style={{ width: 18, height: 6 }}
+            style={{ width: 14, height: 5 }}
           />
         )
       )}
@@ -31,19 +31,19 @@ export default function MorseReference() {
         MORSE CODE REFERENCE
       </p>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-2">
+      <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-2">
         {entries.map(([char, code]) => (
           <div
             key={char}
-            className="flex items-center gap-3 px-3 py-2 rounded-lg border border-white/10 bg-white/[0.03] hover:border-cyan-500/40 hover:bg-cyan-950/20 transition-colors"
+            className="flex items-center gap-2 px-2 py-2 rounded-lg border border-white/10 bg-white/[0.03] hover:border-cyan-500/40 hover:bg-cyan-950/20 transition-colors overflow-hidden"
           >
-            <span className="text-cyan-300 font-bold text-base w-4 shrink-0 font-mono">
+            <span className="text-cyan-300 font-bold text-sm w-3 shrink-0 font-mono">
               {char}
             </span>
 
             <span className="w-px h-4 bg-white/10 shrink-0" />
 
-            <div className="flex flex-1 justify-center">
+            <div className="flex flex-1 justify-center min-w-0 overflow-hidden">
               <MorseBar code={code} />
             </div>
           </div>

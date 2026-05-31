@@ -1,5 +1,6 @@
-import GamePage from "./modules/comm-failure/pages/GamePage";
+import { RouterProvider } from 'react-router-dom'
+import { router } from './routers'
 
 export default function App() {
-  return <GamePage />;
+  return <RouterProvider router={router} />
 }
